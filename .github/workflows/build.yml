@@ -1,0 +1,133 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Apple silicon: native build
+          - label: darwin-arm64
+            os: macos-latest
+          # Intel: cross-built on the arm64 runner via -arch x86_64
+          - label: darwin-amd64
+            os: macos-latest
+            goarch: amd64
+            arch-flags: "-arch x86_64"
+          - label: windows-amd64
+            os: windows-latest
+          - label: linux-amd64
+            os: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go-backend/go.mod
+          cache-dependency-path: go-backend/go.sum
+
+      - name: Install GTK/WebKit dev dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+
+      - name: Ensure MinGW is available (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          if ! command -v gcc; then
+            choco install mingw --no-progress -y
+            echo "C:\\ProgramData\\mingw64\\mingw64\\bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build renderer
+        run: npm run build
+
+      # macOS: mirror `npm run go:build`, then ad-hoc sign and zip the bundle
+      - name: Build .app bundle (macOS)
+        if: runner.os == 'macOS'
+        working-directory: go-backend
+        env:
+          GOARCH: ${{ matrix.goarch || 'arm64' }}
+          CGO_CFLAGS: "-O2 -g -mmacosx-version-min=11.0 ${{ matrix.arch-flags }}"
+          CGO_LDFLAGS: "-mmacosx-version-min=11.0 ${{ matrix.arch-flags }}"
+        run: |
+          go build -o GitForge.app/Contents/MacOS/GitForge .
+          mkdir -p GitForge.app/Contents/Resources
+          cp appicon.icns GitForge.app/Contents/Resources/GitForge.icns
+          codesign --force --sign - GitForge.app
+          ditto -c -k --keepParent GitForge.app "../GitForge-${{ matrix.label }}.app.zip"
+
+      - name: Upload macOS bundle
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GitForge-${{ matrix.label }}.app.zip
+          path: GitForge-${{ matrix.label }}.app.zip
+          if-no-files-found: error
+
+      # Windows: plain exe (WebView2 is part of the OS), zipped for the artifact
+      - name: Build exe (Windows)
+        if: runner.os == 'Windows'
+        working-directory: go-backend
+        env:
+          GOARCH: amd64
+        run: go build -o GitForge.exe .
+
+      - name: Zip exe (Windows)
+        if: runner.os == 'Windows'
+        working-directory: go-backend
+        shell: pwsh
+        run: Compress-Archive -Path GitForge.exe -DestinationPath "..\GitForge-${{ matrix.label }}.zip"
+
+      - name: Upload Windows exe
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GitForge-${{ matrix.label }}.zip
+          path: GitForge-${{ matrix.label }}.zip
+          if-no-files-found: error
+
+      # Linux: dynamically linked against the system GTK3/WebKit2GTK 4.1
+      - name: Build binary (Linux)
+        if: runner.os == 'Linux'
+        working-directory: go-backend
+        env:
+          CGO_ENABLED: "1"
+          CGO_CFLAGS: "-O2 -g"
+          CGO_LDFLAGS: "-O2 -g"
+        run: |
+          go build -o gitforge .
+          tar -czf "../GitForge-${{ matrix.label }}.tar.gz" gitforge
+
+      - name: Upload Linux binary
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GitForge-${{ matrix.label }}.tar.gz
+          path: GitForge-${{ matrix.label }}.tar.gz
+          if-no-files-found: error

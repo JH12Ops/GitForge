@@ -147,6 +147,41 @@ func parseBranches(stdout string, favorites map[string]bool) []WireBranch {
 		}
 	}
 
+	return reflectRemoteTracking(branches)
+}
+
+// reflectRemoteTracking gives each remote branch the tracking status of its
+// local counterpart, inverted: `main` [ahead 2, behind 1] of `origin/main`
+// means `origin/main` is 1 ahead and 2 behind of the local tip. Remote refs
+// carry no upstream of their own, so this is the only status source.
+func reflectRemoteTracking(branches []WireBranch) []WireBranch {
+	tracking := map[string][2]int{}
+
+	for _, b := range branches {
+		if b.Kind != "local" || b.Upstream == nil {
+			continue
+		}
+
+		tracking[*b.Upstream] = [2]int{b.Ahead, b.Behind}
+	}
+
+	for i := range branches {
+		remote := branches[i].Remote
+
+		if branches[i].Kind != "remote" || remote == nil {
+			continue
+		}
+
+		counts, ok := tracking[*remote+"/"+branches[i].Name]
+
+		if !ok {
+			continue
+		}
+
+		branches[i].Ahead = counts[1]
+		branches[i].Behind = counts[0]
+	}
+
 	return branches
 }
 

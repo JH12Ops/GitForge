@@ -13,6 +13,8 @@ const props = defineProps<{
   hasLocal?: boolean
   hasRemote?: boolean
   muted?: boolean
+  ahead?: number
+  behind?: number
 }>()
 
 const repo = useRepositoryStore()
@@ -38,6 +40,8 @@ const menu = computed(() => {
         :has-local="hasLocal"
         :has-remote="hasRemote"
         :muted="muted"
+        :ahead="ahead"
+        :behind="behind"
       />
     </div>
   </ContextMenu>
@@ -48,5 +52,7 @@ const menu = computed(() => {
     :has-local="hasLocal"
     :has-remote="hasRemote"
     :muted="muted"
+    :ahead="ahead"
+    :behind="behind"
   />
 </template>

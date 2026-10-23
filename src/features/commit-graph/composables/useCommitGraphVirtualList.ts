@@ -24,7 +24,7 @@ export function useCommitGraphVirtualList(options: {
   /** Ordered rows: commits with stashes above their base and the pending
    *  row anchored above the HEAD commit. */
   const rows = computed<GraphRow[]>(() =>
-    buildGraphRows(repo.commits, hasPendingRow.value, repo.stashes, repo.headCommitIndex),
+    buildGraphRows(repo.commits, hasPendingRow.value, repo.stashes),
   )
 
   const commitVirtualByCommit = computed(() => commitVirtualIndexByCommit(rows.value))

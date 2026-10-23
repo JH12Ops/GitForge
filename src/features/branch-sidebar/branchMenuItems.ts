@@ -1,4 +1,4 @@
-import { Check, GitBranch, GitCompare, Link, Pencil, Star, Trash2 } from '@lucide/vue'
+import { ArrowDown, Check, GitBranch, GitCompare, Link, Pencil, Star, Trash2 } from '@lucide/vue'
 import type { MenuItem } from '@/components/ui/menu'
 import type { Branch } from '@/types/git'
 import type { useRepositoryStore } from '@/stores/repository'
@@ -27,7 +27,7 @@ export function branchMenuItems(repo: RepositoryStore, branch: Branch): MenuItem
     ]
   }
 
-  return [
+  const items: MenuItem[] = [
     { label: 'Checkout', icon: Check, onSelect: () => repo.checkoutBranch(branch.name) },
     {
       label: 'Create Branch Here',
@@ -37,6 +37,24 @@ export function branchMenuItems(repo: RepositoryStore, branch: Branch): MenuItem
     { separator: true },
     { label: 'Rename', icon: Pencil, onSelect: () => repo.renameBranch(branch.name) },
     { label: 'Set Upstream', icon: Link, onSelect: () => repo.setUpstream(branch.name) },
+  ]
+
+  // GitKraken-style tracking pull: fast-forwards this branch from its
+  // upstream without checking it out (the backend falls back to a regular
+  // ff-only pull when the branch is HEAD).
+  if (branch.upstream) {
+    items.unshift({
+      label: `Pull ${branch.upstream}`,
+      icon: ArrowDown,
+      onSelect: () =>
+        void repo.runAction({
+          kind: 'pull-branch',
+          target: branch.name,
+        }),
+    })
+  }
+
+  items.push(
     {
       label: 'Compare with Current',
       icon: GitCompare,
@@ -59,5 +77,7 @@ export function branchMenuItems(repo: RepositoryStore, branch: Branch): MenuItem
       danger: true,
       onSelect: () => repo.deleteBranch(branch.name),
     },
-  ]
+  )
+
+  return items
 }

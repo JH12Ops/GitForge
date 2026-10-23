@@ -456,6 +456,43 @@ func lfsError(err *GitError) *GitError {
 	return err
 }
 
+// fetchSourceForUpstream resolves how to fast-forward `branch` from the
+// refname git reports as its upstream (`%(upstream)`): remote-tracked
+// upstreams fetch from `<remote> <name>:<branch>`, local-branch upstreams
+// (branch.<x>.remote = ".") fetch from ". <name>:<branch>".
+func fetchSourceForUpstream(c actionContext, branch string) (string, string, *GitError) {
+	res, gerr := c.run([]string{"for-each-ref", "--format=%(upstream)", "refs/heads/" + branch})
+
+	if gerr != nil {
+		return "", "", gerr
+	}
+
+	full := strings.TrimSpace(res.stdout)
+
+	if full == "" {
+		return "", "", unknownErr("Branch " + branch + " has no upstream to pull from.")
+	}
+
+	if rest, ok := strings.CutPrefix(full, "refs/remotes/"); ok {
+		if remote, src, ok2 := strings.Cut(rest, "/"); ok2 {
+			return remote, src, nil
+		}
+	} else if src, ok := strings.CutPrefix(full, "refs/heads/"); ok {
+		return ".", src, nil
+	}
+
+	return "", "", unknownErr("Invalid upstream ref for branch " + branch + ".")
+}
+
+// upstreamShortFor rebuilds the short upstream label for progress messages.
+func upstreamShortFor(c actionContext, remote, src string) string {
+	if remote == "." {
+		return src
+	}
+
+	return remote + "/" + src
+}
+
 // remoteTimeoutFor mirrors remote_timeout_for.
 func remoteTimeoutFor(kind string) time.Duration {
 	switch kind {
@@ -797,6 +834,38 @@ func routeAction(c actionContext, kind, target string, meta map[string]any) (str
 		}
 
 		return "Pulled latest changes", nil
+
+	case "pull-branch":
+		branch, gerr := checkedRev(target, "branch")
+
+		if gerr != nil {
+			return "", gerr
+		}
+
+		// The checked-out branch is updated by the regular pull above:
+		// git refuses to fetch directly into HEAD's branch.
+		if head, herr := c.currentBranch(); herr == nil && head == branch {
+			if _, gerr := c.runStream([]string{"pull", "--ff-only"}, "pull"); gerr != nil {
+				return "", gerr
+			}
+
+			return "Pulled latest changes into " + branch, nil
+		}
+
+		remote, src, gerr := fetchSourceForUpstream(c, branch)
+
+		if gerr != nil {
+			return "", gerr
+		}
+
+		// Fast-forward refs/heads/<branch> to its upstream without checking
+		// it out. Plain fetch refspecs refuse non-fast-forward updates,
+		// matching the ff-only pull policy.
+		if _, gerr := c.runStream([]string{"fetch", remote, src + ":" + branch}, "pull"); gerr != nil {
+			return "", gerr
+		}
+
+		return "Pulled " + upstreamShortFor(c, remote, src) + " into " + branch, nil
 
 	case "push":
 		if _, gerr := c.runStream([]string{"push"}, "push"); gerr != nil {
