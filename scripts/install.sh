@@ -143,7 +143,26 @@ if command -v codesign >/dev/null 2>&1; then
 fi
 
 # --- Launch ----------------------------------------------------------------------
+# Same LaunchServices care as install-app.sh: a bundle freshly swapped at
+# /Applications can make `open` fail transiently with error -600, and `set -e`
+# would wrongly report the whole install as failed.
 if [ "$OPEN_APP" -eq 1 ]; then
   say "Launching ${APP_NAME}..."
-  open "$APP_PATH"
+
+  LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+  [ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP_PATH" >/dev/null 2>&1 || true
+
+  LAUNCHED=0
+  for _ in 1 2 3 4 5; do
+    if open "$APP_PATH" >/dev/null 2>&1; then
+      LAUNCHED=1
+      break
+    fi
+    sleep 2
+  done
+
+  if [ "$LAUNCHED" -eq 0 ]; then
+    say "Could not launch automatically (LaunchServices hiccup)."
+    say "Start it manually: open ${APP_PATH}"
+  fi
 fi

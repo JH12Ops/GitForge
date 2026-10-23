@@ -131,7 +131,7 @@ describe('updater (GitHub Releases core)', () => {
 
   it('stays silent on startup when up to date or snoozed', async () => {
     const dialog = vi.fn()
-    await checkForUpdates({
+    const outcome = await checkForUpdates({
       source: 'startup',
       currentVersion: '0.3.0',
       fetchRelease: async () => ({
@@ -148,8 +148,9 @@ describe('updater (GitHub Releases core)', () => {
       platform: 'darwin',
     })
     expect(dialog).not.toHaveBeenCalled()
+    expect(outcome).toBe('up-to-date')
 
-    await checkForUpdates({
+    const snoozed = await checkForUpdates({
       source: 'startup',
       currentVersion: '0.2.0',
       fetchRelease: async () => ({
@@ -166,6 +167,53 @@ describe('updater (GitHub Releases core)', () => {
       platform: 'darwin',
     })
     expect(dialog).not.toHaveBeenCalled()
+    expect(snoozed).toBe('snoozed')
+  })
+
+  it('reports up-to-date and failed outcomes so callers can notify the user', async () => {
+    const dialog = vi.fn()
+    const deps = {
+      source: 'menu' as const,
+      currentVersion: '0.2.0',
+      readSnooze: () => null,
+      writeSnooze: vi.fn(),
+      askDownload: dialog,
+      openDownload: vi.fn(),
+      arch: 'arm64',
+      platform: 'darwin',
+    }
+
+    const upToDate = await checkForUpdates({
+      ...deps,
+      currentVersion: '0.3.0',
+      fetchRelease: async () => ({
+        tag_name: 'v0.3.0',
+        html_url: 'https://releases',
+        body: null,
+        assets: [],
+      }),
+    })
+    expect(upToDate).toBe('up-to-date')
+    expect(dialog).not.toHaveBeenCalled()
+
+    const fetchFailed = await checkForUpdates({
+      ...deps,
+      fetchRelease: async () => {
+        throw new Error('offline')
+      },
+    })
+    expect(fetchFailed).toBe('failed')
+
+    const unparseable = await checkForUpdates({
+      ...deps,
+      fetchRelease: async () => ({
+        tag_name: 'not-a-version',
+        html_url: 'https://releases',
+        body: null,
+        assets: [],
+      }),
+    })
+    expect(unparseable).toBe('failed')
   })
 
   it('records snooze when the user postpones', async () => {

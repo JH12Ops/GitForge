@@ -27,11 +27,12 @@ const shortMessage = computed(() =>
 )
 
 /**
- * Stashes anchor above their base commit (`buildGraphRows`). When the base
- * is outside the loaded window — pagination, or a base orphaned by a later
- * amend/rebase — the row falls back to the top with no connector line.
- * Surface the base explicitly so a floating stash reads as explainable
- * instead of misplaced.
+ * Stashes are pinned directly below the current branch's row
+ * (`buildGraphRows`), even when their base commit is outside the loaded
+ * window — pagination, or a base orphaned by a later amend/rebase. The
+ * connector line to the base simply cannot be drawn in that case. Surface
+ * the base explicitly so a floating stash reads as explainable instead of
+ * misplaced.
  */
 const baseShort = computed(() =>
   props.stash.baseSha ? props.stash.baseSha.slice(0, 7) : null,

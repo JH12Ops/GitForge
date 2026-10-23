@@ -16,6 +16,7 @@ export const COMMAND_IDS = [
   'refresh',
   'pull',
   'push',
+  'commitStaged',
   'undo',
   'redo',
   'openTerminal',
@@ -57,6 +58,8 @@ export const COMMAND_META: Record<CommandId, CommandMeta> = {
   refresh: { title: 'Refresh repository', category: 'Repository', allowInInput: false },
   pull: { title: 'Pull', category: 'Repository', allowInInput: false },
   push: { title: 'Push', category: 'Repository', allowInInput: false },
+  // Works while focused in the commit box summary/description fields.
+  commitStaged: { title: 'Commit staged changes', category: 'Repository', allowInInput: true },
   undo: { title: 'Undo last operation', category: 'Repository', allowInInput: false },
   redo: { title: 'Redo operation', category: 'Repository', allowInInput: false },
   openTerminal: { title: 'Open system terminal', category: 'Repository', allowInInput: false, advanced: true },
@@ -102,6 +105,8 @@ export function defaultKeymap(): Keymap {
     refresh: [b('r', M)],
     pull: [b('l', { ...M, shift: true })],
     push: [b('p', { ...M, shift: true })],
+    // Option/Alt+Enter: commits from the commit box without leaving the keyboard.
+    commitStaged: [b('enter', { alt: true })],
     undo: [b('z', M)],
     redo: [b('z', { ...M, shift: true })],
     openTerminal: [b('j', M)],

@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +36,43 @@ import (
 //go:embed appicon.png
 var appIconPNG []byte
 
+// localBuildHash returns the short commit hash the binary was built from, or
+// "" for release builds (BUILT by CI, where GITHUB_ACTIONS is set) and builds
+// outside a git checkout (e.g. release tarballs), which keep the plain
+// version everywhere. The go toolchain stamps vcs.revision automatically —
+// no ldflags wiring needed.
+func localBuildHash() string {
+	if os.Getenv("GITHUB_ACTIONS") == "true" {
+		return ""
+	}
+
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.revision" && len(setting.Value) >= 7 {
+			return setting.Value[:7]
+		}
+	}
+
+	return ""
+}
+
+// aboutDescription builds the native About dialog message (Wails renders the
+// app options' Name + Description as the About text). Local builds append the
+// commit hash so the About panel matches the "Local Build: <hash>" shown by
+// the renderer.
+func aboutDescription() string {
+	description := "A fast, beautiful Git client — GitForge"
+	if hash := localBuildHash(); hash != "" {
+		description += "\n\nLocal Build: " + hash
+	}
+
+	return description
+}
+
 func main() {
 	distDir, err := resolveDistDir()
 
@@ -50,6 +88,8 @@ func main() {
 		backend.SetLogSink(filepath.Join(home, "Library", "Logs", "gitforge.log"))
 	}
 
+	description := aboutDescription()
+
 	// Optional twin HTTP listener for backend tests (curl):
 	//   GITFORGE_LOCAL_TEST_ADDR=127.0.0.1:18333 go run .
 	if testAddr := os.Getenv("GITFORGE_LOCAL_TEST_ADDR"); testAddr != "" {
@@ -61,7 +101,7 @@ func main() {
 
 	app := application.New(application.Options{
 		Name:        "GitForge",
-		Description: "A fast, beautiful Git client — GitForge",
+		Description: description,
 		Icon:        appIconPNG,
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,

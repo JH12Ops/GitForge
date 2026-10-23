@@ -21,10 +21,10 @@ export function useCommitGraphVirtualList(options: {
   const { selectedSha, selectedStash } = storeToRefs(selection)
   const { scrollEl, rowHeight, hasPendingRow } = options
 
-  /** Ordered rows: commits with stashes above their base and the pending
-   *  row anchored above the HEAD commit. */
+  /** Ordered rows: the pending row pinned at the very top, the current
+   *  branch's row, every stash below it, then the remaining commits. */
   const rows = computed<GraphRow[]>(() =>
-    buildGraphRows(repo.commits, hasPendingRow.value, repo.stashes),
+    buildGraphRows(repo.commits, repo.headCommitIndex, hasPendingRow.value, repo.stashes),
   )
 
   const commitVirtualByCommit = computed(() => commitVirtualIndexByCommit(rows.value))
