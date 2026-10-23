@@ -10,6 +10,7 @@ const ACTION_MESSAGES: Partial<Record<GitActionKind, (target?: string) => string
   fetch: () => 'Fetched from origin',
   pull: () => 'Pulled latest changes from origin',
   push: () => 'Pushed commits to origin',
+  'push-upstream': () => 'Created remote branch on origin and pushed',
   'force-push': () => 'Force-pushed to origin',
   sync: () => 'Synced with origin',
   stash: () => 'Saved working tree to stash',
@@ -376,7 +377,7 @@ export class MockGitService implements GitService {
 
 function latencyFor(kind: GitActionKind): number {
   if (kind === 'fetch' || kind === 'pull' || kind === 'sync') return 900
-  if (kind === 'push' || kind === 'force-push' || kind === 'commit-and-push' || kind === 'commit-and-force-push') return 1100
+  if (kind === 'push' || kind === 'push-upstream' || kind === 'force-push' || kind === 'commit-and-push' || kind === 'commit-and-force-push') return 1100
   if (kind === 'copy-sha' || kind === 'undo' || kind === 'redo') return 120
   return 360
 }

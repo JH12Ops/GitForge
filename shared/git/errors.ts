@@ -12,6 +12,7 @@ export type GitErrorCode =
   | 'BareRepository'
   | 'DetachedHead'
   | 'RemoteRejected'
+  | 'NoUpstream'
   | 'NothingToCommit'
   | 'Network'
   | 'DirtyWorktree'
@@ -60,6 +61,7 @@ const DEFAULT_MESSAGES: Record<GitErrorCode, string> = {
   BareRepository: 'Bare repositories are not supported.',
   DetachedHead: 'HEAD is detached.',
   RemoteRejected: 'The remote rejected the push.',
+  NoUpstream: 'This branch has no upstream on the remote yet.',
   NothingToCommit: 'There are no staged changes to commit.',
   Network: 'A network error occurred while contacting the remote.',
   DirtyWorktree: 'You have uncommitted changes that would be overwritten.',

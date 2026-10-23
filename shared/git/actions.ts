@@ -11,6 +11,7 @@ export type GitActionKind =
   | 'pull'
   | 'push'
   | 'force-push'
+  | 'push-upstream'
   | 'push-tags'
   | 'prune'
   | 'sync'

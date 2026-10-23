@@ -271,6 +271,7 @@ const (
 	ErrCodeBareRepository     = "BareRepository"
 	ErrCodeDetachedHead       = "DetachedHead"
 	ErrCodeRemoteRejected     = "RemoteRejected"
+	ErrCodeNoUpstream         = "NoUpstream"
 	ErrCodeNothingToCommit    = "NothingToCommit"
 	ErrCodeNetwork            = "Network"
 	ErrCodeDirtyWorktree      = "DirtyWorktree"

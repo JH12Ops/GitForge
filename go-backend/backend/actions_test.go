@@ -21,6 +21,27 @@ func TestClassifyCherryPickConflictExtractsFiles(t *testing.T) {
 	}
 }
 
+func TestClassifyNoUpstream(t *testing.T) {
+	// Real stderr shape of `git push` on a branch that was never published.
+	stderr := "fatal: The current branch feature/web-urls has no upstream branch.\n" +
+		"To push the current branch and set the remote as upstream, use:\n" +
+		"\n" +
+		"    git push --set-upstream origin feature/web-urls\n"
+	err := ClassifyGitError(stderrOrStdout(stderr, ""), 1)
+
+	if err.Code != ErrCodeNoUpstream {
+		t.Fatalf("code = %q, want NoUpstream", err.Code)
+	}
+
+	if !strings.Contains(err.Message, "upstream") {
+		t.Fatalf("message = %q", err.Message)
+	}
+
+	if !strings.Contains(err.Detail, "feature/web-urls") {
+		t.Fatalf("detail = %q, want the branch name", err.Detail)
+	}
+}
+
 func TestCherryPickConflictFilesFromStdout(t *testing.T) {
 	// Real-life shape: git writes CONFLICT lines to stdout, hints + the
 	// "cherry-pick" keyword to stderr.

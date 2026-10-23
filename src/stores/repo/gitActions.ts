@@ -26,6 +26,14 @@ import type { RepositoryState } from './types'
 let autoFetchTimer: ReturnType<typeof setTimeout> | undefined
 let autoFetchInFlight = false
 
+/** Push flavors that can fail with `NoUpstream` on a brand-new branch. */
+const UPSTREAM_OFFER_KINDS: Set<GitAction['kind']> = new Set([
+  'push',
+  'force-push',
+  'commit-and-push',
+  'commit-and-force-push',
+])
+
 function clearAutoFetchTimer(): void {
   if (autoFetchTimer !== undefined) {
     clearTimeout(autoFetchTimer)
@@ -133,6 +141,7 @@ export const gitActions = {
       'fetch',
       'pull',
       'push',
+      'push-upstream',
       'push-tags',
       'force-push',
       'commit-and-push',
@@ -157,6 +166,26 @@ export const gitActions = {
     const toastMessage = hint ? `${result.message} — ${hint}` : result.message
     toast.push(toastMessage, result.ok ? 'success' : 'error')
     useGitOutputStore().log(this.repository?.path, action, result)
+
+    // A brand-new branch has nowhere to push yet: plain `git push` fails
+    // with `NoUpstream`. Offer a one-click create-and-publish instead.
+    const branchName = this.repository?.currentBranch
+    if (
+      !result.ok &&
+      result.errorCode === 'NoUpstream' &&
+      UPSTREAM_OFFER_KINDS.has(action.kind) &&
+      branchName
+    ) {
+      const create = await usePromptStore().confirm({
+        title: 'Create remote branch',
+        message: `“${branchName}” doesn't exist on the remote yet. Create it and push?`,
+        confirmLabel: 'Create and push',
+      })
+      if (create) {
+        return this.runAction({ kind: 'push-upstream' }, { skipConfirm: true })
+      }
+    }
+
     if (result.ok) {
       suppressWatcherRefresh()
       this.refreshing = true

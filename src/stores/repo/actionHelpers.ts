@@ -39,6 +39,8 @@ export function labelForOperation(action: GitAction): string | null {
       return 'Pulling...'
     case 'push':
       return 'Pushing...'
+    case 'push-upstream':
+      return 'Creating remote branch and pushing...'
     case 'force-push':
       return 'Force-pushing (with lease)...'
     case 'sync':
