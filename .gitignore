@@ -1,0 +1,14 @@
+node_modules
+dist
+src-tauri/target
+src-tauri/gen
+*.log
+.DS_Store
+coverage
+tmp/
+go-backend/GitForge.app/Contents/MacOS/
+go-backend/GitForge.app/Contents/_CodeSignature/
+gitforge
+go-backend/gitforge
+.idea
+*.dmg
