@@ -6,10 +6,16 @@ import Button from '@/components/ui/Button.vue'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import type { MenuItem } from '@/components/ui/menu'
+import { formatBindings } from '@/lib/keybindings'
+import { useUiStore } from '@/stores/ui'
 import { useRepositoryStore } from '@/stores/repository'
 
 const repo = useRepositoryStore()
+const ui = useUiStore()
 const { commitMessage, commitDescription, amend } = storeToRefs(repo)
+
+/** Keyboard hint for the commit button, e.g. "⌥↵" (mac) / "Alt+↵". */
+const commitShortcut = computed(() => formatBindings(ui.keybindings.commitStaged))
 
 const commitBusy = computed(
   () =>
@@ -101,6 +107,7 @@ const pushMenu = computed<MenuItem[]>(() => {
         :icon="GitCommitHorizontal"
         :disabled="!repo.canCommit"
         :busy="commitBusy"
+        :title="`Commit staged changes (${commitShortcut})`"
         @click="repo.commit()"
       >
         {{ commitButtonLabel }}

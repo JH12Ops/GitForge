@@ -42,10 +42,13 @@ function writeSnoozeWails(snooze: UpdateSnooze): void {
  * Update check sans native updater: everything here is fetch-based; the
  * "download?" decision becomes a plain confirm and self-update is disabled
  * (the in-place updater ships with the Go release pipeline, v0.2).
+ * Manual checks report failure and "already up to date" as toasts; the
+ * startup check stays silent unless an update is offered.
  */
 async function runUpdateCheck(source: UpdateCheckSource): Promise<void> {
+  const toast = useToastStore()
   try {
-    await checkForUpdates({
+    const outcome = await checkForUpdates({
       source,
       currentVersion: APP_VERSION,
       fetchRelease: fetchLatestRelease,
@@ -58,8 +61,15 @@ async function runUpdateCheck(source: UpdateCheckSource): Promise<void> {
       platform: 'macos',
       selfUpdateHint: 'Download opens the release page in your browser.',
     })
+    if (source === 'menu') {
+      if (outcome === 'up-to-date') {
+        toast.push(`You're on the latest version (v${APP_VERSION}).`, 'info')
+      } else if (outcome === 'failed') {
+        toast.push('Update check failed. Check your connection and try again.', 'error')
+      }
+    }
   } catch (err) {
-    useToastStore().push(`Update check failed: ${String(err)}`, 'error')
+    toast.push(`Update check failed: ${String(err)}`, 'error')
   }
 }
 

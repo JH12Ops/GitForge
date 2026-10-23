@@ -173,6 +173,9 @@ const dynamicShortcuts = computed<ShortcutHandler[]>(() => {
   push('refresh', () => void repo.runAction({ kind: 'refresh' }))
   push('pull', () => void repo.runAction({ kind: 'pull' }))
   push('push', () => void repo.runAction({ kind: 'push' }))
+  push('commitStaged', () => {
+    if (repo.canCommit && !repo.busyAction) void repo.commit()
+  })
   push('undo', () => { if (repo.canUndo) void repo.runAction({ kind: 'undo' }) })
   push('redo', () => { if (repo.canRedo) void repo.runAction({ kind: 'redo' }) })
   push('graphNavDown', () => selection.moveBy(1))

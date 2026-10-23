@@ -18,6 +18,13 @@ export interface UpdateSnooze {
 
 export type UpdateCheckSource = 'menu' | 'startup'
 
+/** What happened during a check, so callers can give user feedback. */
+export type UpdateCheckOutcome =
+  | 'update-offered' // newer release found and shown to the user
+  | 'snoozed' // startup check suppressed by a previous "later"
+  | 'up-to-date' // running the latest version
+  | 'failed' // release fetch or version comparison failed
+
 const RELEASES_PAGE_URL = `${APP_REPOSITORY}/releases`
 const RELEASES_LATEST_API_URL = `${APP_REPOSITORY.replace(
   'https://github.com/',
@@ -195,18 +202,19 @@ export interface UpdateCheckDeps {
   platform: string
 }
 
-export async function checkForUpdates(deps: UpdateCheckDeps): Promise<void> {
+export async function checkForUpdates(deps: UpdateCheckDeps): Promise<UpdateCheckOutcome> {
   const { source, currentVersion } = deps
   let release: GitHubRelease
   try {
     release = await deps.fetchRelease()
   } catch {
-    return
+    return 'failed'
   }
   const latestVersion = release.tag_name.replace(/^v/, '')
   const comparison = compareSemver(latestVersion, currentVersion)
-  if (comparison === null || comparison <= 0) return
-  if (source === 'startup' && deps.readSnooze()?.version === latestVersion) return
+  if (comparison === null) return 'failed'
+  if (comparison <= 0) return 'up-to-date'
+  if (source === 'startup' && deps.readSnooze()?.version === latestVersion) return 'snoozed'
 
   const releaseNotes = formatReleaseNotes(release.body)
   const detailLines = [`You are running v${currentVersion}.`]
@@ -219,12 +227,13 @@ export async function checkForUpdates(deps: UpdateCheckDeps): Promise<void> {
   if (choice === 'download') {
     if (deps.installSelfUpdate) {
       const outcome = await deps.installSelfUpdate(release, deps.arch)
-      if (outcome === 'installed') return // install succeeded; app restarts on its own
+      if (outcome === 'installed') return 'update-offered' // install succeeded; app restarts on its own
     }
     await deps.openDownload(resolveDownloadUrl(release, deps.platform, deps.arch))
-    return
+    return 'update-offered'
   }
   deps.writeSnooze({ version: latestVersion })
+  return 'update-offered'
 }
 
 export async function fetchLatestRelease(): Promise<GitHubRelease> {
