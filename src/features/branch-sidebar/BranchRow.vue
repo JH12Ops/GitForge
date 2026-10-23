@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { ArrowDown, ArrowUp, Check, Cloud, Star } from '@lucide/vue'
 import ContextMenu from '@/components/ui/ContextMenu.vue'
 import { branchMenuItems } from './branchMenuItems'
-import { cn, laneColor } from '@/lib/utils'
+import { cn, labelLaneColor } from '@/lib/utils'
 import type { Branch } from '@/types/git'
 import { useRepositoryStore } from '@/stores/repository'
 import { useSelectionStore } from '@/stores/selection'
@@ -76,7 +76,10 @@ function onDrop(event: DragEvent): void {
   branchDrag.pendingIntegrate = { source, target: props.branch }
 }
 
-const dotColor = computed(() => laneColor(props.branch.laneColorIndex))
+/* The dot color belongs to the branch itself (stable label hue), not the
+ * graph lane: laneColorIndex re-syncs to the branch tip's lane, which
+ * re-maps on checkout, which would recolor the branch on every switch. */
+const dotColor = computed(() => labelLaneColor(props.branch.name))
 const indent = computed(() => `${(props.depth ?? 0) * 14 + 24}px`)
 const isRemote = computed(() => props.branch.kind === 'remote')
 const isSidebarSelected = computed(() => selectedBranchId.value === props.branch.id)
