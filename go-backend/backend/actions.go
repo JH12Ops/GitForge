@@ -729,6 +729,24 @@ func (c *actionContext) noTarget() *GitError {
 	return unknownErr("No target specified.")
 }
 
+// currentBranch resolves HEAD's short branch name. Detached HEAD surfaces
+// as "HEAD" — an explicit error rather than a silent mis-push.
+func (c *actionContext) currentBranch() (string, *GitError) {
+	res, gerr := c.run([]string{"rev-parse", "--abbrev-ref", "HEAD"})
+
+	if gerr != nil {
+		return "", gerr
+	}
+
+	branch := strings.TrimSpace(res.stdout)
+
+	if branch == "" || branch == "HEAD" {
+		return "", unknownErr("Not on a branch — check out a branch before publishing it.")
+	}
+
+	return branch, nil
+}
+
 // routeAction mirrors route_action: the kind → git argv dispatch table.
 func routeAction(c actionContext, kind, target string, meta map[string]any) (string, *GitError) {
 	// Semantic validation (argv arrays prevent shell injection, but a value
@@ -793,6 +811,53 @@ func routeAction(c actionContext, kind, target string, meta map[string]any) (str
 		}
 
 		return "Force-pushed to remote", nil
+
+	case "push-upstream":
+		branch, gerr := c.currentBranch()
+
+		if gerr != nil {
+			return "", gerr
+		}
+
+		remote, _ := metaString(meta, "remote")
+		remote = strings.TrimSpace(remote)
+
+		if remote == "" {
+			remote = "origin"
+		}
+
+		// Optional publish-as rename: push the local branch under a
+		// different name on the remote via refspec `<branch>:<remoteBranch>`.
+		remoteBranch, _ := metaString(meta, "remoteBranch")
+		remoteBranch = strings.TrimSpace(remoteBranch)
+
+		if remoteBranch == "" {
+			remoteBranch = branch
+		}
+
+		if gerr := rejectOptionLike(remote, "remote"); gerr != nil {
+			return "", gerr
+		}
+
+		if gerr := rejectOptionLike(branch, "branch"); gerr != nil {
+			return "", gerr
+		}
+
+		if gerr := rejectOptionLike(remoteBranch, "remote branch"); gerr != nil {
+			return "", gerr
+		}
+
+		refspec := branch
+
+		if remoteBranch != branch {
+			refspec = branch + ":" + remoteBranch
+		}
+
+		if _, gerr := c.runStream([]string{"push", "--set-upstream", remote, refspec}, "push"); gerr != nil {
+			return "", gerr
+		}
+
+		return "Created " + remote + "/" + remoteBranch + " and pushed", nil
 
 	case "push-tags":
 		if _, gerr := c.runStream([]string{"push", "--tags"}, "push-tags"); gerr != nil {

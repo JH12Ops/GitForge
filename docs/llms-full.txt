@@ -43,7 +43,7 @@ Open several repositories at once — switch between tabs and pick up where you 
 Inline blame overlay with author blocks, per-revision file history, and optional word wrap for long lines.
 
 ### Remote sync + auto-fetch
-Fetch, pull, push, and sync from the toolbar — with ahead/behind counts in the status bar. Optional background auto-fetch on a configurable interval.
+Fetch, pull, push, and sync from the toolbar — with ahead/behind counts in the status bar. Optional background auto-fetch on a configurable interval. When the window regains focus, GitForge refreshes the repository (local changes + a silent fetch for remote changes), and a periodic background poll keeps the working tree in sync even while the window is inactive.
 
 ### Search & shortcuts
 Search commits and files by message or path (non-matching graph rows dim). Navigate history and drive the UI from the keyboard — every shortcut is remappable in Settings → Shortcuts with conflict detection.

@@ -40,10 +40,38 @@ type LifecycleStore = RepositoryState & {
   discoverRepositories(root: string): Promise<DiscoveredRepo[]>
   restartAutoFetch(): void
   stopAutoFetch(): void
+  requestChangesCheck(): void
+  restartStatusPoll(): void
+  stopStatusPoll(): void
 }
 
 let changeUnsub: (() => void) | null = null
 let progressUnsub: (() => void) | null = null
+let windowFocusUnsub: (() => void) | null = null
+let domWindowUnsub: (() => void) | null = null
+
+/**
+ * DOM fallback for window-focus checks: the backend `git:focus` SSE event
+ * covers the native window (WindowDidBecomeMain), but there is no native
+ * window in the browser dev gateway, and a native dialog detour can move
+ * webview focus back and forth without the window ever resigning main. So
+ * `focus` and `visibilitychange` are watched alongside the SSE event; both
+ * feed the same debounced, deduped check (`requestChangesCheck`).
+ */
+function attachWindowFocusListeners(notify: () => void): () => void {
+  // Node (unit tests) has no DOM: nothing to attach there.
+  if (typeof window === 'undefined' || typeof document === 'undefined') return () => {}
+  const onFocus = (): void => notify()
+  const onVisibility = (): void => {
+    if (document.visibilityState === 'visible') notify()
+  }
+  window.addEventListener('focus', onFocus)
+  document.addEventListener('visibilitychange', onVisibility)
+  return () => {
+    window.removeEventListener('focus', onFocus)
+    document.removeEventListener('visibilitychange', onVisibility)
+  }
+}
 
 /**
  * Monotonic token for "which repository switch is the newest". The backend
@@ -179,6 +207,8 @@ export const lifecycleActions = {
     this.recentRepos = await gitService.recentRepos()
     changeUnsub?.()
     progressUnsub?.()
+    windowFocusUnsub?.()
+    domWindowUnsub?.()
     changeUnsub = gitService.onRepositoryChanged((event) => {
       // The backend watches exactly one repo. A stale watcher (tab preloads,
       // re-points that are still settling) can emit events for another
@@ -189,6 +219,13 @@ export const lifecycleActions = {
       scheduleSnapshotRefresh((scopes) => this.refreshSnapshot(scopes), event.scopes)
     })
     progressUnsub = gitService.onProgress((progress) => this.onProgress(progress))
+    // Window regained focus: re-check repository changes (local + remote).
+    // The SSE path carries no repo path, so there is nothing to guard here —
+    // the check itself always targets the repository on screen.
+    if (typeof gitService.onWindowFocused === 'function') {
+      windowFocusUnsub = gitService.onWindowFocused(() => this.requestChangesCheck())
+    }
+    domWindowUnsub = attachWindowFocusListeners(() => this.requestChangesCheck())
   },
 
   onProgress(this: LifecycleStore, progress: OperationProgress): void {
@@ -355,6 +392,7 @@ export const lifecycleActions = {
       useRepoTabsStore().setActive(activePath)
       useUiStore().setLastRepositoryPath(activePath)
       this.restartAutoFetch()
+      this.restartStatusPoll()
 
       const activation = markBackendRepoPending(this.activateBackend(activePath))
 
@@ -498,6 +536,7 @@ export const lifecycleActions = {
     useUiStore().setLastRepositoryPath(activePath)
     if (!options?.silent) toast.push(result.message, 'success')
     this.restartAutoFetch()
+    this.restartStatusPoll()
     // Keep the skeleton up until the snapshot's first paint has flushed: the
     // flush that mounts a big repository can block the main thread, and the
     // skeleton is the only thing explaining the wait.
@@ -540,6 +579,7 @@ export const lifecycleActions = {
     useRepoTabsStore().syncFromRecent(this.recentRepos)
     toast.push(result.message, 'success')
     this.restartAutoFetch()
+    this.restartStatusPoll()
     return true
   },
 
@@ -576,6 +616,7 @@ export const lifecycleActions = {
     useRepoTabsStore().syncFromRecent(this.recentRepos)
     toast.push(result.message, 'success')
     this.restartAutoFetch()
+    this.restartStatusPoll()
     return true
   },
 
@@ -620,6 +661,7 @@ export const lifecycleActions = {
 
   async closeRepository(this: LifecycleStore): Promise<void> {
     this.stopAutoFetch()
+    this.stopStatusPoll()
     // Invalidate any open/switch still in flight: its result must not repaint
     // a repository the user has just closed.
     ++switchToken

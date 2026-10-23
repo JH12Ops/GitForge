@@ -19,6 +19,7 @@ GitForge is a graph-first Git client for browsing history, managing branches, st
 - Merge / rebase / interactive rebase (reorder, squash, fixup) / cherry-pick / bisect
 - Undo / redo, stash, force-push with lease (`--force-with-lease`)
 - Fetch / pull / push with ahead/behind counts, remote maintenance, auto-fetch
+- Refreshes on focus and in the background (working-tree status poll + silent auto-fetch)
 - Multi-repo tabs, command palette (⌘K), custom/remappable shortcuts
 - Git LFS tracking, Git output log for every command
 - Themes, Basic/Advanced UI mode, resizable three-pane layout

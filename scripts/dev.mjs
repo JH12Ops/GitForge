@@ -180,7 +180,9 @@ async function main() {
   }
 
   process.on('SIGINT', shutdown)
-  process.on('SIGTERM', shutdown)
+  // Node passes the signal name as the first listener argument; default the
+  // exit code explicitly so `shutdown()` never receives a string.
+  process.on('SIGTERM', () => shutdown(0))
 
   console.log(
     '[dev] browser dev — frontend on http://localhost:1420 with the live Go gateway. ' +

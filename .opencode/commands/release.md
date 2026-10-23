@@ -44,11 +44,11 @@ npm run sync-version
 ```
 
 This updates:
-- `package-lock.json` — top-level `"version"` and `"packages".""`
-- `docs/index.html` — `vX.Y.Z` strings (hero badge and footer)
-- `docs/llms.txt` — `**Version:**` line in Key facts
-- `src-tauri/Cargo.toml` — `[package] version`
-- `src-tauri/tauri.conf.json` — top-level `version`
+- `package-lock.json` — top-level `"version"` and `packages[""]`
+- `docs/index.html` — `vX.Y.Z` strings (hero badge and footer) and JSON-LD `softwareVersion`
+- `docs/llms.txt` — `Current version:` line
+- `docs/llms-full.txt` — `Version:` line near the top
+- `go-backend/GitForge.app/Contents/Info.plist` — `CFBundleVersion` / `CFBundleShortVersionString`
 
 The app reads `package.json` at build time via `shared/app/metadata.ts` — no other source files need manual version edits.
 
@@ -65,8 +65,7 @@ Run before committing:
 ```bash
 npm run typecheck
 npm run test
-cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
-cargo fmt --check
+npm run go:test
 npm run sync-version -- --check
 ```
 
@@ -116,8 +115,8 @@ git tag -a vX.Y.Z -m "Release vX.Y.Z"
 
 - [ ] `docs/screenshot.png` refreshed at 1440×900 (+ landing page alt/titlebar copy synced if UI changed)
 - [ ] Version bumped in `package.json`
-- [ ] `npm run sync-version` run (`package-lock.json`, `docs/index.html`, `docs/llms.txt`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json` match)
-- [ ] `npm run typecheck`, `npm run test`, `cargo clippy`, `cargo fmt --check` pass
+- [ ] `npm run sync-version` run (`package-lock.json`, `docs/index.html`, `docs/llms.txt`, `docs/llms-full.txt`, `go-backend/GitForge.app/Contents/Info.plist` match)
+- [ ] `npm run typecheck`, `npm run test`, `npm run go:test` pass
 - [ ] All pending changes staged (`git add -A`) and included in release commit
 - [ ] Commit created with release message
 - [ ] Annotated tag `vX.Y.Z` created

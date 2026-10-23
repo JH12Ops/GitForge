@@ -45,6 +45,7 @@ var defaultMessages = map[string]string{
 	ErrCodeBareRepository:     "Bare repositories are not supported.",
 	ErrCodeDetachedHead:       "HEAD is detached.",
 	ErrCodeRemoteRejected:     "The remote rejected the push.",
+	ErrCodeNoUpstream:         "This branch has no upstream on the remote yet.",
 	ErrCodeNothingToCommit:    "There are no staged changes to commit.",
 	ErrCodeNetwork:            "A network error occurred while contacting the remote.",
 	ErrCodeDirtyWorktree:      "You have uncommitted changes that would be overwritten.",
@@ -124,6 +125,9 @@ func ClassifyGitError(stderr string, exit int) *GitError {
 
 	case contains("failed to push"):
 		return gitErr(ErrCodeRemoteRejected, align, nil)
+
+	case contains("has no upstream branch", "no tracking information"):
+		return gitErr(ErrCodeNoUpstream, align, nil)
 
 	case contains("could not resolve host", "connection timed out", "network is unreachable"):
 		return gitErr(ErrCodeNetwork, align, nil)

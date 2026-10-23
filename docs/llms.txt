@@ -29,6 +29,7 @@ Use this file as a curated index. For complete landing-page content in one fetch
 - Diff viewer: unified/split modes, blame overlay, file history, word wrap · image diffs with zoom, pan, fullscreen lightbox
 - Merge (default, ff-only, no-ff, squash) / rebase / interactive rebase (reorder, squash, fixup, drop, edit) / cherry-pick
 - Remote sync: fetch, pull, push with ahead/behind counts; remote maintenance (fetch all, prune, push tags); configurable auto-fetch interval
+- Smart refresh: reloads on window focus (local + remote check) and a periodic background status poll; .git plumbing watched via fsnotify
 - Undo / redo (reflog-backed) · stash · force-push via `--force-with-lease`
 - Git output log: per-tab drawer with executed commands, stdout/stderr, and status
 - Command palette — fuzzy launcher for actions and branches (⌘K) · customizable keyboard shortcuts (remappable, conflict detection)
