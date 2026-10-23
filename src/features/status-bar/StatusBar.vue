@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { GitCommitHorizontal, Loader2, Search, Square, Terminal, ZoomIn, ZoomOut } from '@lucide/vue'
-import { appVersion } from '@/lib/appVersion'
+import { appBuildLabel, appVersion } from '@/lib/appVersion'
 import { useRepositoryStore } from '@/stores/repository'
 import { useGitOutputStore } from '@/stores/gitOutput'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'
@@ -40,7 +40,7 @@ const zoomMenuItems = computed<MenuItem[]>(() => [
   <footer
     class="flex h-6 shrink-0 items-center gap-3 border-t border-[var(--color-border)] bg-[var(--color-panel)] px-3 text-[11px] text-[var(--color-fg-muted)]"
   >
-    <span class="shrink-0 text-[var(--color-fg-subtle)]">v{{ appVersion }}</span>
+    <span class="shrink-0 text-[var(--color-fg-subtle)]">{{ appBuildLabel || `v${appVersion}` }}</span>
 
     <div class="flex-1" />
 

@@ -60,5 +60,27 @@ ditto go-backend/${APP_NAME}.app "$APP_PATH"
 # Re-seal at the destination (same as scripts/install.sh).
 codesign --force --deep --sign - "$APP_PATH" >/dev/null 2>&1 || true
 
-say "Installed ${APP_NAME} v${VERSION}. Launching..."
-open "$APP_PATH"
+# --- Launch ----------------------------------------------------------------------
+# Freshly swapped bundles can confuse LaunchServices: `open` fails with
+# `_LSOpenURLsWithCompletionHandler() failed with error -600` (procNotFound)
+# until the new bundle is registered and the old process record drains.
+# The install itself is done, so launch softly: re-register, settle, retry.
+say "Installed ${APP_NAME} v${VERSION}."
+
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+[ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP_PATH" >/dev/null 2>&1 || true
+
+say "Launching..."
+LAUNCHED=0
+for _ in 1 2 3 4 5; do
+  if open "$APP_PATH" >/dev/null 2>&1; then
+    LAUNCHED=1
+    break
+  fi
+  sleep 2
+done
+
+if [ "$LAUNCHED" -eq 0 ]; then
+  say "Could not launch automatically (LaunchServices hiccup)."
+  say "Start it manually: open ${APP_PATH}"
+fi
