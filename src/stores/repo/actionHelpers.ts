@@ -37,6 +37,8 @@ export function labelForOperation(action: GitAction): string | null {
       return 'Fetching...'
     case 'pull':
       return 'Pulling...'
+    case 'pull-branch':
+      return `Pulling into ${action.target ?? 'branch'}...`
     case 'push':
       return 'Pushing...'
     case 'push-upstream':

@@ -57,6 +57,7 @@ export type GitActionKind =
   | 'delete-remote-branch'
   | 'rename-branch'
   | 'set-upstream'
+  | 'pull-branch'
   | 'compare-branches'
   // Tags
   | 'tag'

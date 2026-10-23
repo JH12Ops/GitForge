@@ -175,6 +175,7 @@ export const gitActions = {
     this.canCancel = [
       'fetch',
       'pull',
+      'pull-branch',
       'push',
       'push-upstream',
       'push-tags',

@@ -23,9 +23,10 @@ import type { MenuItem } from '@/components/ui/menu'
 import { whenTimestamp } from '@/lib/format'
 import { openExternalUrl } from '@/lib/shell/appBridge'
 import { isHeadSymbolicRef } from '@/lib/git/headRef'
+import { findBranchForRef } from '@/features/branch-sidebar/branchRefUtils'
 import { formatRefLabel } from '@shared/git/refLabel'
 import { githubCommitUrl } from '@shared/git/githubUrl'
-import type { Commit, Ref } from '@/types/git'
+import type { Branch, Commit, Ref } from '@/types/git'
 import type { GraphNode } from '@/lib/graph/computeGraphLayout'
 import { findLaneBranchPreview } from '@/lib/graph/commitLaneBranchPreview'
 import { useRepositoryStore } from '@/stores/repository'
@@ -72,6 +73,8 @@ interface DisplayRef {
   ref: Ref
   hasLocal: boolean
   hasRemote: boolean
+  ahead?: number
+  behind?: number
 }
 
 function branchPresence(refs: Ref[]): { hasLocal: boolean; hasRemote: boolean } {
@@ -79,6 +82,16 @@ function branchPresence(refs: Ref[]): { hasLocal: boolean; hasRemote: boolean } 
     hasLocal: refs.some((r) => r.type === 'localBranch'),
     hasRemote: refs.some((r) => r.type === 'remoteBranch'),
   }
+}
+
+/**
+ * Tracking status for a decorated tip, resolved against the branch rows:
+ * local tips show their upstream ahead/behind, remote tips show the inverted
+ * counts of their local counterpart (backend-filled).
+ */
+function trackingFor(ref: Ref, branches: Branch[]): { ahead: number; behind: number } {
+  const branch = findBranchForRef(ref, branches)
+  return { ahead: branch?.ahead ?? 0, behind: branch?.behind ?? 0 }
 }
 
 const isStashCommit = computed(
@@ -102,10 +115,14 @@ const displayRefs = computed((): DisplayRef[] => {
     }
   }
   return [...byLabel.entries()]
-    .map(([label, ref]) => ({
-      ref,
-      ...branchPresence(refsByLabel.get(label) ?? []),
-    }))
+    .map(([label, ref]) => {
+      const tracking = trackingFor(ref, repo.branches)
+      return {
+        ref,
+        ...branchPresence(refsByLabel.get(label) ?? []),
+        ...tracking,
+      }
+    })
     .sort((a, b) => {
       const byPriority = refPriority(a.ref) - refPriority(b.ref)
       if (byPriority !== 0) return byPriority
@@ -351,6 +368,8 @@ function openOnGithub(): void {
             :color="chipColor"
             :has-local="primaryRef.hasLocal"
             :has-remote="primaryRef.hasRemote"
+            :ahead="primaryRef.ahead"
+            :behind="primaryRef.behind"
           />
           <div v-if="isCreatingBranchHere" class="relative min-w-0 flex-1">
             <BranchNameChipInput
@@ -373,6 +392,8 @@ function openOnGithub(): void {
                 :color="chipColor"
                 :has-local="previewBranch.hasLocal"
                 :has-remote="previewBranch.hasRemote"
+                :ahead="trackingFor(previewBranch.ref, repo.branches).ahead"
+                :behind="trackingFor(previewBranch.ref, repo.branches).behind"
                 muted
               />
             </div>
@@ -395,6 +416,8 @@ function openOnGithub(): void {
                   :color="chipColor"
                   :has-local="primaryRef.hasLocal"
                   :has-remote="primaryRef.hasRemote"
+                  :ahead="primaryRef.ahead"
+                  :behind="primaryRef.behind"
                 />
               </div>
               <div class="group/extra contents">
@@ -416,6 +439,8 @@ function openOnGithub(): void {
                     :color="chipColor"
                     :has-local="entry.hasLocal"
                     :has-remote="entry.hasRemote"
+                    :ahead="entry.ahead"
+                    :behind="entry.behind"
                   />
                 </div>
               </div>

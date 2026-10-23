@@ -1,11 +1,11 @@
 /**
  * Row model for the commit graph list.
  *
- * Order (top to bottom): commits newest-first, with the uncommitted-changes
- * (pending) row anchored immediately above the HEAD commit's row and each
- * stash inserted immediately above its base commit (GitKraken-style). When
- * HEAD is not in the loaded commit window the pending row falls back to the
- * top, right below unanchored stashes.
+ * Order (top to bottom): unanchored stashes, the uncommitted-changes (pending)
+ * row pinned at the very top of the graph (GitKraken anchors WIP to the top so
+ * later refs — pulled remote tips, other-branch commits — sort below it), then
+ * commits newest-first with each stash inserted immediately above its base
+ * commit.
  */
 
 export type GraphRow =
@@ -19,7 +19,6 @@ export function buildGraphRows(
   commits: { sha: string }[],
   hasPendingRow: boolean,
   stashes: { baseSha: string | null }[],
-  headCommitIndex = -1,
 ): GraphRow[] {
   const indexBySha = buildCommitIndex(commits)
   const byBase = new Map<number, number[]>()
@@ -38,18 +37,12 @@ export function buildGraphRows(
 
   const rows: GraphRow[] = []
   for (const stashIndex of unanchored) rows.push({ kind: 'stash', stashIndex })
+  if (hasPendingRow) rows.push({ kind: 'pending' })
   for (let commitIndex = 0; commitIndex < commits.length; commitIndex++) {
     for (const stashIndex of byBase.get(commitIndex) ?? []) {
       rows.push({ kind: 'stash', stashIndex })
     }
-    // The pending row tracks the working tree of the HEAD commit, so it
-    // anchors there rather than blindly at the top of the list (with
-    // `--all` scope, other refs can sort above HEAD).
-    if (hasPendingRow && commitIndex === headCommitIndex) rows.push({ kind: 'pending' })
     rows.push({ kind: 'commit', commitIndex })
-  }
-  if (hasPendingRow && !rows.some((row) => row.kind === 'pending')) {
-    rows.unshift({ kind: 'pending' })
   }
   return rows
 }

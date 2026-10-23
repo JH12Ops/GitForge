@@ -96,7 +96,15 @@ func BuildSnapshot(ctx context.Context, path string, opts SnapshotOptions) (*Wir
 	var authors *AuthorRegistry
 
 	if commitsWanted {
-		commits, total, a, gerr := fetchCommitWindow(ctx, path, limit, graphAll, 0)
+		// Head scope still walks tracked upstreams so remote tips (e.g. a
+		// diverged origin/main) decorate inside the focused graph.
+		var tracked []string
+
+		if !graphAll {
+			tracked = trackedUpstreams(ctx, path)
+		}
+
+		commits, total, a, gerr := fetchCommitWindow(ctx, path, limit, graphAll, tracked, 0)
 
 		if gerr != nil {
 			return nil, gerr
@@ -167,10 +175,33 @@ func BuildSnapshot(ctx context.Context, path string, opts SnapshotOptions) (*Wir
 	return snap, nil
 }
 
+// trackedUpstreams returns the short upstream ref of every local branch that
+// tracks one (deduped), e.g. origin/main. Used to widen the head-scope walk
+// past the current branch so tracked remote tips stay visible.
+func trackedUpstreams(ctx context.Context, path string) []string {
+	res, _ := RunGit(ctx, path, "for-each-ref", "--format=%(upstream:short)", "refs/heads")
+	seen := map[string]bool{}
+	var ups []string
+
+	for _, line := range strings.Split(res.Stdout, "\n") {
+		up := strings.TrimSpace(line)
+
+		if up == "" || seen[up] {
+			continue
+		}
+
+		seen[up] = true
+		ups = append(ups, up)
+	}
+
+	return ups
+}
+
 // fetchCommitWindow runs `git log` for the snapshot window; returns commits,
 // the total reachable-ref commit count for the same scope, and the author
-// registry for those commits.
-func fetchCommitWindow(ctx context.Context, path string, limit int, graphAll bool, skip int) ([]WireCommit, int, *AuthorRegistry, *GitError) {
+// registry for those commits. In head scope the tracked upstreams are
+// positive tips alongside HEAD, matching gitkraken-style tracking display.
+func fetchCommitWindow(ctx context.Context, path string, limit int, graphAll bool, tracked []string, skip int) ([]WireCommit, int, *AuthorRegistry, *GitError) {
 	args := []string{"log", "--decorate=short", "--format=" + logFormat(), fmt.Sprintf("-n%d", limit)}
 
 	if skip > 0 {
@@ -179,6 +210,11 @@ func fetchCommitWindow(ctx context.Context, path string, limit int, graphAll boo
 
 	if graphAll {
 		args = append(args, "--all")
+	} else {
+		// HEAD stays implicit unless refs are listed, so base the walk on
+		// the current branch explicitly, then add tracked remote tips.
+		args = append(args, "HEAD")
+		args = append(args, tracked...)
 	}
 
 	res, err := RunGit(ctx, path, args...)
@@ -197,6 +233,10 @@ func fetchCommitWindow(ctx context.Context, path string, limit int, graphAll boo
 		countArgs = append(countArgs, "--all")
 	} else {
 		countArgs = append(countArgs, "HEAD")
+
+		if len(tracked) > 0 {
+			countArgs = append(countArgs, tracked...)
+		}
 	}
 
 	out, _ := RunGit(ctx, path, countArgs...)
@@ -322,7 +362,13 @@ func CommitPage(ctx context.Context, req CommitPageRequestWire) (*CommitPageResu
 	}
 
 	graphAll := req.GraphScope != "head"
-	commits, total, _, gerr := fetchCommitWindow(ctx, req.Path, limit, graphAll, skip)
+	var tracked []string
+
+	if !graphAll {
+		tracked = trackedUpstreams(ctx, req.Path)
+	}
+
+	commits, total, _, gerr := fetchCommitWindow(ctx, req.Path, limit, graphAll, tracked, skip)
 
 	if gerr != nil {
 		return nil, gerr

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, useTemplateRef } from 'vue'
-import { Check, Cloud, Monitor, Tag as TagIcon } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Check, Cloud, Monitor, Tag as TagIcon } from '@lucide/vue'
 import { formatRefLabel } from '@shared/git/refLabel'
 import type { Ref } from '@/types/git'
 
@@ -13,13 +13,25 @@ const props = defineProps<{
   hasRemote?: boolean
   /** Reduced opacity for hover preview chips that are not branch tips. */
   muted?: boolean
+  /** Commits the tip has that its tracked counterpart lacks. */
+  ahead?: number
+  /** Commits the tracked counterpart has that this tip lacks. */
+  behind?: number
 }>()
 
-const label = computed(() =>
-  props.refData.label
-    ? props.refData.label
-    : formatRefLabel(props.refData.name, props.refData.type),
-)
+const label = computed(() => {
+  if (props.refData.label) {
+    // Remote-only tips read as `origin/feature` so the tracking status is
+    // attributable; synced tips merge into one locally labeled chip instead.
+    if (props.refData.type === 'remoteBranch' && !props.hasLocal) {
+      return props.refData.name
+    }
+
+    return props.refData.label
+  }
+
+  return formatRefLabel(props.refData.name, props.refData.type)
+})
 
 const isCurrent = computed(() => props.refData.isHead === true)
 const showLocalIcon = computed(
@@ -29,6 +41,9 @@ const showRemoteIcon = computed(
   () => props.hasRemote ?? props.refData.type === 'remoteBranch',
 )
 const showTagIcon = computed(() => props.refData.type === 'tag')
+const showTracking = computed(
+  () => (props.ahead ?? 0) > 0 || (props.behind ?? 0) > 0,
+)
 
 const resolvedColor = computed((): string =>
   props.refData.type === 'tag' ? 'var(--color-warning)' : props.color,
@@ -121,9 +136,26 @@ onUnmounted(() => {
       >
         {{ label }}
       </span>
-      <span v-if="showLocalIcon || showRemoteIcon" class="ml-auto flex shrink-0 items-center gap-1">
+      <span
+        v-if="showLocalIcon || showRemoteIcon || showTracking"
+        class="ml-auto flex shrink-0 items-center gap-1"
+      >
         <Monitor v-if="showLocalIcon" :size="12" class="opacity-90" />
         <Cloud v-if="showRemoteIcon" :size="12" class="opacity-90" />
+        <span
+          v-if="ahead"
+          class="flex items-center gap-[1px] font-mono text-[10px] leading-none"
+          title="ahead of tracked branch"
+        >
+          <ArrowUp :size="10" />{{ ahead }}
+        </span>
+        <span
+          v-if="behind"
+          class="flex items-center gap-[1px] font-mono text-[10px] leading-none"
+          title="behind tracked branch"
+        >
+          <ArrowDown :size="10" />{{ behind }}
+        </span>
       </span>
     </span>
   </span>
@@ -144,9 +176,26 @@ onUnmounted(() => {
       <Check v-if="isCurrent" :size="12" class="shrink-0" />
       <TagIcon v-if="showTagIcon" :size="12" class="shrink-0 opacity-90" />
       <span :class="isCurrent ? 'font-semibold' : 'font-medium'">{{ label }}</span>
-      <span v-if="showLocalIcon || showRemoteIcon" class="ml-auto flex shrink-0 items-center gap-1">
+      <span
+        v-if="showLocalIcon || showRemoteIcon || showTracking"
+        class="ml-auto flex shrink-0 items-center gap-1"
+      >
         <Monitor v-if="showLocalIcon" :size="12" class="opacity-90" />
         <Cloud v-if="showRemoteIcon" :size="12" class="opacity-90" />
+        <span
+          v-if="ahead"
+          class="flex items-center gap-[1px] font-mono text-[10px] leading-none"
+          title="ahead of tracked branch"
+        >
+          <ArrowUp :size="10" />{{ ahead }}
+        </span>
+        <span
+          v-if="behind"
+          class="flex items-center gap-[1px] font-mono text-[10px] leading-none"
+          title="behind tracked branch"
+        >
+          <ArrowDown :size="10" />{{ behind }}
+        </span>
       </span>
     </span>
   </Teleport>
