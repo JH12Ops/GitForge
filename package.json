@@ -26,6 +26,7 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.json --composite false",
     "sync-version": "node scripts/sync-version.mjs",
     "package:dmg": "sh scripts/package-dmg.sh",
+    "install:app": "sh scripts/install-app.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:go": "vite build && cd go-backend && GOTOOLCHAIN=go1.26.0 CGO_CFLAGS='-O2 -g -mmacosx-version-min=11.0' CGO_LDFLAGS='-mmacosx-version-min=11.0' go build -o GitForge.app/Contents/MacOS/GitForge . && mkdir -p GitForge.app/Contents/Resources && cp appicon.icns GitForge.app/Contents/Resources/GitForge.icns && codesign --force --sign - GitForge.app && open GitForge.app",

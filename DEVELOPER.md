@@ -57,6 +57,7 @@ npm run dev
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run check` | `typecheck` + `test` + `sync-version --check` + `go:test` |
 | `npm run package:dmg` | Build the app bundle and produce a standalone `GitForge-<version>.dmg` (`scripts/package-dmg.sh`) |
+| `npm run install:app` | Build the current tree and install it to `/Applications/GitForge.app` (`scripts/install-app.sh`) |
 
 ## Architecture
 
@@ -192,6 +193,10 @@ To test packaging before pushing a tag:
 ```bash
 npm run build && npm run go:build && open go-backend/GitForge.app
 ```
+
+To build and install directly into `/Applications` instead, run `npm run install:app`
+— it builds renderer + backend, embeds `dist/` into the bundle, swaps
+`/Applications/GitForge.app`, and relaunches. No version bump or git operations.
 
 The binary inside `GitForge.app` is untracked; `Info.plist` is the tracked template and is version-stamped by `sync-version`.
 
