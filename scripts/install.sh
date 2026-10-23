@@ -5,7 +5,7 @@
 # and replaces /Applications/GitForge.app.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/ftuyama/git-light/main/scripts/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/JH12Ops/GitForge/main/scripts/install.sh | sh
 #   sh install.sh [--uninstall] [--no-open] [--quiet]
 #
 # Why this works: curl (unlike browsers) does not attach the com.apple.quarantine
@@ -13,7 +13,7 @@
 # ad-hoc signed.
 set -eu
 
-REPO="ftuyama/git-light"
+REPO="JH12Ops/GitForge"
 APP_NAME="GitForge"
 APP_PATH="/Applications/${APP_NAME}.app"
 BASE="https://github.com/${REPO}"

@@ -35,7 +35,7 @@ GitForge is a graph-first Git client for browsing history, managing branches, st
 ## Build & run
 
 ```bash
-git clone https://github.com/gitforge/gitforge.git
+git clone https://github.com/JH12Ops/GitForge.git
 cd gitforge
 npm install
 

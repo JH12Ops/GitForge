@@ -7,7 +7,7 @@
   "productName": "gitforge",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gitforge/gitforge.git"
+    "url": "https://github.com/JH12Ops/GitForge.git"
   },
   "main": "index.html",
   "engines": {

@@ -5,7 +5,7 @@
 ## Build from source
 
 ```bash
-git clone https://github.com/gitforge/gitforge.git
+git clone https://github.com/JH12Ops/GitForge.git
 cd gitforge
 npm install
 npm run dev        # browser dev (Vite on :1420, mock/gateway)
@@ -64,7 +64,7 @@ Architecture, stack, and extension points are documented in **[ARCHITECTURE.md](
 
 ## Creating a release
 
-Releases are versioned with git tags (`v*`). Pushing a tag triggers GitHub Actions to build the macOS app bundles (Apple silicon + Intel) and attach them to a [GitHub Release](https://github.com/gitforge/gitforge/releases).
+Releases are versioned with git tags (`v*`). Pushing a tag triggers GitHub Actions to build the macOS app bundles (Apple silicon + Intel) and attach them to a [GitHub Release](https://github.com/JH12Ops/GitForge/releases).
 
 ### Overview
 

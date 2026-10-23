@@ -4,20 +4,20 @@
 
 GitForge is a desktop application built with Vue 3, TypeScript, and a pure Go backend on Wails 3. It runs `git` in the Go backend and exposes a typed HTTP JSON gateway (+ SSE events) to the renderer. Current version: 1.0.2.
 
-Use this file as a curated index. For complete landing-page content in one fetch, see [llms-full.txt](https://gitforge.github.io/gitforge/llms-full.txt).
+Use this file as a curated index. For complete landing-page content in one fetch, see [llms-full.txt](https://jh12ops.github.io/GitForge/llms-full.txt).
 
 ## Product
 
-- [Website](https://gitforge.github.io/gitforge/): Landing page with features, FAQ, download links, and screenshots.
-- [Download latest release](https://github.com/gitforge/gitforge/releases/latest): macOS `.app.zip` bundles (Apple silicon + Intel).
-- [All releases](https://github.com/gitforge/gitforge/releases): Version history and release notes on GitHub.
+- [Website](https://jh12ops.github.io/GitForge/): Landing page with features, FAQ, download links, and screenshots.
+- [Download latest release](https://github.com/JH12Ops/GitForge/releases/latest): macOS `.app.zip` bundles (Apple silicon + Intel).
+- [All releases](https://github.com/JH12Ops/GitForge/releases): Version history and release notes on GitHub.
 
 ## Source & docs
 
-- [GitHub repository](https://github.com/gitforge/gitforge): Source code, issues, and contribution workflow.
-- [README](https://github.com/gitforge/gitforge/blob/main/README.md): Feature matrix, quick start, and platform install steps.
-- [DEVELOPER.md](https://github.com/gitforge/gitforge/blob/main/DEVELOPER.md): Build scripts, local development, and release workflow.
-- [ARCHITECTURE.md](https://github.com/gitforge/gitforge/blob/main/ARCHITECTURE.md): Wails 3 (Go) + Vue layout, HTTP gateway layer, and extension points.
+- [GitHub repository](https://github.com/JH12Ops/GitForge): Source code, issues, and contribution workflow.
+- [README](https://github.com/JH12Ops/GitForge/blob/main/README.md): Feature matrix, quick start, and platform install steps.
+- [DEVELOPER.md](https://github.com/JH12Ops/GitForge/blob/main/DEVELOPER.md): Build scripts, local development, and release workflow.
+- [ARCHITECTURE.md](https://github.com/JH12Ops/GitForge/blob/main/ARCHITECTURE.md): Wails 3 (Go) + Vue layout, HTTP gateway layer, and extension points.
 
 ## Key capabilities
 
@@ -47,5 +47,5 @@ Use this file as a curated index. For complete landing-page content in one fetch
 
 ## Optional
 
-- [llms-full.txt](https://gitforge.github.io/gitforge/llms-full.txt): Full landing-page content and project summary in one file.
-- [Sitemap](https://gitforge.github.io/gitforge/sitemap.xml): Machine-readable URL list for crawlers.
+- [llms-full.txt](https://jh12ops.github.io/GitForge/llms-full.txt): Full landing-page content and project summary in one file.
+- [Sitemap](https://jh12ops.github.io/GitForge/sitemap.xml): Machine-readable URL list for crawlers.

@@ -109,10 +109,10 @@ func menuAction(action, url, path string) func(*application.Context) {
 // @shared/app/metadata at build time; GitForge uses the same fork targets).
 var appLinks = []struct{ label, url string }{
 	// TODO: point at the real GitForge repo once origin exists (no remote yet).
-	{"GitForge Website", "https://github.com/gitforge/gitforge"},
-	{"GitHub Repository", "https://github.com/gitforge/gitforge"},
-	{"Report an Issue", "https://github.com/gitforge/gitforge/issues"},
-	{"Releases & Downloads", "https://github.com/gitforge/gitforge/releases"},
+	{"GitForge Website", "https://github.com/JH12Ops/GitForge"},
+	{"GitHub Repository", "https://github.com/JH12Ops/GitForge"},
+	{"Report an Issue", "https://github.com/JH12Ops/GitForge/issues"},
+	{"Releases & Downloads", "https://github.com/JH12Ops/GitForge/releases"},
 }
 
 func buildAppMenu() *application.Menu {
