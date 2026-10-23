@@ -4,9 +4,9 @@
 
 Version: 1.0.2 · License: MIT · Author: gitforge · Stack: Wails 3 (Go), Vue 3, TypeScript, Pinia, Tailwind CSS 4
 
-Website: https://gitforge.github.io/gitforge/
-Repository: https://github.com/gitforge/gitforge
-Download: https://github.com/gitforge/gitforge/releases
+Website: https://jh12ops.github.io/GitForge/
+Repository: https://github.com/JH12Ops/GitForge
+Download: https://github.com/JH12Ops/GitForge/releases
 
 ---
 
@@ -110,7 +110,7 @@ Use **GitForge → Check for Updates…** to check for new versions in packaged 
 ### Build from source
 
 ```
-git clone https://github.com/gitforge/gitforge.git
+git clone https://github.com/JH12Ops/GitForge.git
 cd gitforge
 npm install
 npm run dev
@@ -135,9 +135,9 @@ GitForge is a lightweight, open-source alternative focused on a fast commit grap
 
 ## Links
 
-- Website: https://gitforge.github.io/gitforge/
-- GitHub: https://github.com/gitforge/gitforge
-- Download: https://github.com/gitforge/gitforge/releases
-- Developer docs: https://github.com/gitforge/gitforge/blob/main/DEVELOPER.md
-- Architecture: https://github.com/gitforge/gitforge/blob/main/ARCHITECTURE.md
-- LLM index: https://gitforge.github.io/gitforge/llms.txt
+- Website: https://jh12ops.github.io/GitForge/
+- GitHub: https://github.com/JH12Ops/GitForge
+- Download: https://github.com/JH12Ops/GitForge/releases
+- Developer docs: https://github.com/JH12Ops/GitForge/blob/main/DEVELOPER.md
+- Architecture: https://github.com/JH12Ops/GitForge/blob/main/ARCHITECTURE.md
+- LLM index: https://jh12ops.github.io/GitForge/llms.txt
