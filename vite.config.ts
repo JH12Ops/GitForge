@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -13,6 +14,24 @@ import tailwindcss from '@tailwindcss/vite'
 
 const devGateway = process.env.GITFORGE_LOCAL_TEST_ADDR
 
+// Short commit hash baked into the renderer for local builds; empty for CI
+// release builds (which originate from a tagged commit, so the plain semver
+// from package.json is authoritative). Empty when git is unavailable so
+// tarball downloads fall back to the plain version too.
+function localBuildHash(): string {
+  if (process.env.GITHUB_ACTIONS === 'true') return ''
+  try {
+    return execSync('git rev-parse --short HEAD', {
+      cwd: __dirname,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim()
+  } catch {
+    return ''
+  }
+}
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -21,6 +40,9 @@ export default defineConfig({
     },
   },
   plugins: [vue(), tailwindcss()],
+  define: {
+    __LOCAL_BUILD_HASH__: JSON.stringify(localBuildHash()),
+  },
   clearScreen: false,
   server: {
     port: 1420,
