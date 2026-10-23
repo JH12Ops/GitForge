@@ -107,10 +107,7 @@ export function useCommitGraphOverlay(options: {
           const seg = segments[i]
           const x1 = laneX(seg.fromLane, laneWidth)
           const x2 = laneX(seg.toLane, laneWidth)
-          const cornerRadius = Math.min(
-            seg.kind === 'merge' ? 9 : 6,
-            laneWidth.value * 0.35,
-          )
+          const cornerRadius = Math.min(6, laneWidth.value * 0.35)
           const d = graphEdgePath(x1, y1, x2, y2, cornerRadius, seg.kind)
           edges.push({ key: `${band}-${i}`, d, color: seg.color, dimmed: isCommitDimmed(band) })
         }

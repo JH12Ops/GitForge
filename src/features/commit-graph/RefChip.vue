@@ -67,6 +67,13 @@ const labelRef = useTemplateRef('labelRef')
 const expanded = ref(false)
 const anchorRect = ref({ top: 0, left: 0, width: 0, height: 22 })
 
+/* The full-label overlay for a truncated chip is display-only and
+ * transparent to the pointer (`pointer-events-none`, no hover handlers):
+ * when it intercepted events, mounting it under the cursor yanked hover
+ * target ownership out of the row — the row's mouseleave fired while the
+ * pointer was visually on the chip — which churned hover state and made
+ * the chip and its lane band blink while parked. */
+
 let leaveTimer: ReturnType<typeof setTimeout> | undefined
 
 function expand(): void {
@@ -123,9 +130,10 @@ onUnmounted(() => {
     <span
       ref="anchorRef"
       class="relative z-20 inline-flex h-[22px] w-auto max-w-full min-w-0 items-center gap-1 overflow-hidden rounded-md px-2 text-[12px] font-medium"
-      :class="[expanded ? 'invisible' : '', muted ? 'opacity-45' : '']"
+      :class="[muted ? 'opacity-45' : '']"
       :style="chipStyle"
       @mouseenter="expand"
+      @mouseleave="scheduleCollapse"
     >
       <Check v-if="isCurrent" :size="12" class="shrink-0" />
       <TagIcon v-if="showTagIcon" :size="12" class="shrink-0 opacity-90" />
@@ -163,15 +171,13 @@ onUnmounted(() => {
   <Teleport to="body">
     <span
       v-if="expanded"
-      class="fixed z-[100] inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 text-[12px] font-medium shadow-md"
+      class="pointer-events-none fixed z-[100] inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 text-[12px] font-medium shadow-md"
       :style="{
         ...chipStyle,
         top: `${anchorRect.top}px`,
         left: `${anchorRect.left}px`,
         height: `${anchorRect.height}px`,
       }"
-      @mouseenter="cancelCollapse"
-      @mouseleave="scheduleCollapse"
     >
       <Check v-if="isCurrent" :size="12" class="shrink-0" />
       <TagIcon v-if="showTagIcon" :size="12" class="shrink-0 opacity-90" />

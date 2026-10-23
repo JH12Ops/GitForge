@@ -6,10 +6,15 @@ describe('graphEdgePath', () => {
     expect(graphEdgePath(10, 5, 10, 35)).toBe('M10 5 L10 35')
   })
 
-  it('draws a smooth merge with a rounded corner near the source row', () => {
+  it('sweeps merges across at the merge row, then bends down the parent lane', () => {
     const d = graphEdgePath(10, 5, 30, 35, 5, 'merge')
     expect(d).toBe('M10 5 L25 5 Q30 5 30 10 L30 35')
     expect(d).toContain('Q')
+  })
+
+  it('draws tall merge drops the same way, bend anchored at the merge row', () => {
+    const d = graphEdgePath(10, 5, 30, 205, 5, 'merge')
+    expect(d).toBe('M10 5 L25 5 Q30 5 30 10 L30 205')
   })
 
   it('anchors branch forks with a rounded corner near the target row', () => {
@@ -24,7 +29,7 @@ describe('graphEdgePath', () => {
     expect(d).toContain('Q')
   })
 
-  it('mirrors the merge corner when lanes are flipped left', () => {
+  it('mirrors the merge bend when lanes are flipped left', () => {
     const d = graphEdgePath(30, 5, 10, 35, 5, 'merge')
     expect(d).toBe('M30 5 L15 5 Q10 5 10 10 L10 35')
     expect(d).toContain('Q')

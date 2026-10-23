@@ -177,16 +177,28 @@ func BuildSnapshot(ctx context.Context, path string, opts SnapshotOptions) (*Wir
 
 // trackedUpstreams returns the short upstream ref of every local branch that
 // tracks one (deduped), e.g. origin/main. Used to widen the head-scope walk
-// past the current branch so tracked remote tips stay visible.
+// past the current branch so tracked remote tips stay visible. Upstreams whose
+// remote-tracking ref no longer exists (`%(upstream:track)` = [gone], the
+// branch config outliving a deleted remote branch) are skipped: passing a dead
+// ref to `git log`/`rev-list` aborts the whole walk with
+// "ambiguous argument … unknown revision".
 func trackedUpstreams(ctx context.Context, path string) []string {
-	res, _ := RunGit(ctx, path, "for-each-ref", "--format=%(upstream:short)", "refs/heads")
+	res, _ := RunGit(ctx, path, "for-each-ref",
+		"--format="+joinSansSep([]string{"%(upstream:short)", "%(upstream:track)"}),
+		"refs/heads")
 	seen := map[string]bool{}
 	var ups []string
 
 	for _, line := range strings.Split(res.Stdout, "\n") {
-		up := strings.TrimSpace(line)
+		fields := strings.SplitN(strings.TrimSpace(line), refFIELD, 2)
+		up := strings.TrimSpace(fields[0])
+		track := ""
 
-		if up == "" || seen[up] {
+		if len(fields) > 1 {
+			track = strings.TrimSpace(fields[1])
+		}
+
+		if up == "" || seen[up] || strings.Contains(track, "[gone]") {
 			continue
 		}
 

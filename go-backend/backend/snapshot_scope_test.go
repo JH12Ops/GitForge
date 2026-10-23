@@ -165,3 +165,26 @@ func TestHeadScopeIncludesTrackedUpstream(t *testing.T) {
 		t.Fatalf("untracked walk leaked upstream tip: %v", subs)
 	}
 }
+
+// A gone upstream (remote branch deleted, the branch config outliving it)
+// must be skipped: handing the dead ref to the head-scope walk aborted the
+// whole snapshot with "ambiguous argument … unknown revision", which left
+// the graph frozen on stale refs around merges/pulls.
+func TestHeadScopeSkipsGoneUpstream(t *testing.T) {
+	dir := upstreamScopeRepo(t)
+	ctx := context.Background()
+
+	if _, err := RunGit(ctx, dir, "branch", "-D", "other"); err != nil {
+		t.Fatalf("delete upstream branch: %v", err)
+	}
+
+	ups := trackedUpstreams(ctx, dir)
+
+	if len(ups) != 0 {
+		t.Fatalf("trackedUpstreams = %v, want [] (upstream is gone)", ups)
+	}
+
+	if subs := snapshotSubjects(t, dir, SnapshotOptions{GraphScope: "head"}); !contains(subs, "base on main") {
+		t.Fatalf("head walk lost the HEAD-side commit: %v", subs)
+	}
+}

@@ -162,9 +162,6 @@ function assignEdges(
       if (kind === 'laneChange') continue
 
       pushEdge(i, lc, lp, kind)
-      if (kind === 'merge') {
-        pushEdge(i, lp, lp, 'straight')
-      }
       for (let r = i + 1; r < rp; r++) pushEdge(r, lp, lp, 'straight')
     }
   }
