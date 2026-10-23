@@ -1,11 +1,13 @@
 /**
  * Row model for the commit graph list.
  *
- * Order (top to bottom): unanchored stashes, the uncommitted-changes (pending)
- * row pinned at the very top of the graph (GitKraken anchors WIP to the top so
- * later refs — pulled remote tips, other-branch commits — sort below it), then
- * commits newest-first with each stash inserted immediately above its base
- * commit.
+ * Order (top to bottom): the uncommitted-changes (pending) row pinned at the
+ * very top of the graph (GitKraken anchors WIP to the top so later refs —
+ * pulled remote tips, other-branch commits — sort below it), then the current
+ * branch's HEAD row, then every stash pinned directly below it in stash-index
+ * order regardless of which commit each stash was created on (GitKraken-style;
+ * a dotted connector drops from the stash box to its base commit), then the
+ * remaining commits newest-first.
  */
 
 export type GraphRow =
@@ -13,35 +15,25 @@ export type GraphRow =
   | { kind: 'stash'; stashIndex: number }
   | { kind: 'commit'; commitIndex: number }
 
-import { buildCommitIndex } from './commitIndex'
-
 export function buildGraphRows(
   commits: { sha: string }[],
+  headIndex: number,
   hasPendingRow: boolean,
   stashes: { baseSha: string | null }[],
 ): GraphRow[] {
-  const indexBySha = buildCommitIndex(commits)
-  const byBase = new Map<number, number[]>()
-  const unanchored: number[] = []
-  for (let i = 0; i < stashes.length; i++) {
-    const baseSha = stashes[i].baseSha
-    const baseIndex = baseSha ? (indexBySha.get(baseSha) ?? -1) : -1
-    if (baseIndex >= 0) {
-      const list = byBase.get(baseIndex) ?? []
-      list.push(i)
-      byBase.set(baseIndex, list)
-    } else {
-      unanchored.push(i)
-    }
-  }
-
   const rows: GraphRow[] = []
-  for (const stashIndex of unanchored) rows.push({ kind: 'stash', stashIndex })
   if (hasPendingRow) rows.push({ kind: 'pending' })
-  for (let commitIndex = 0; commitIndex < commits.length; commitIndex++) {
-    for (const stashIndex of byBase.get(commitIndex) ?? []) {
-      rows.push({ kind: 'stash', stashIndex })
-    }
+  for (
+    let commitIndex = 0;
+    commitIndex <= Math.min(headIndex, commits.length - 1);
+    commitIndex++
+  ) {
+    rows.push({ kind: 'commit', commitIndex })
+  }
+  for (let stashIndex = 0; stashIndex < stashes.length; stashIndex++) {
+    rows.push({ kind: 'stash', stashIndex })
+  }
+  for (let commitIndex = Math.max(headIndex + 1, 0); commitIndex < commits.length; commitIndex++) {
     rows.push({ kind: 'commit', commitIndex })
   }
   return rows
