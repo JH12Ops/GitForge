@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue'
+import { computed, onUnmounted, ref, useTemplateRef } from 'vue'
 import {
   Check,
   Cherry,
@@ -29,6 +29,7 @@ import { githubCommitUrl } from '@shared/git/githubUrl'
 import type { Branch, Commit, Ref } from '@/types/git'
 import type { GraphNode } from '@/lib/graph/computeGraphLayout'
 import { findLaneBranchPreview } from '@/lib/graph/commitLaneBranchPreview'
+import { distinctLaneColors, labelLaneColor } from '@/lib/utils'
 import { useRepositoryStore } from '@/stores/repository'
 import { useInteractiveRebaseStore } from '@/stores/interactiveRebase'
 import { useSelectionStore, PENDING_BRANCH_ROW } from '@/stores/selection'
@@ -134,6 +135,56 @@ const primaryRef = computed(() => displayRefs.value[0] ?? null)
 const hiddenRefs = computed(() => displayRefs.value.slice(1))
 const hiddenCount = computed(() => hiddenRefs.value.length)
 
+const chipColor = computed(() => props.graphNode?.color ?? 'var(--color-fg-muted)')
+
+/* Chip colors belong to the branch, not the lane. Graph lanes re-map on
+ * checkout (the head jumps to lane 0, whose color is purple), so lane-based
+ * chips changed color every time branches were switched. Colors resolve
+ * from the chip's display label alone, so a branch keeps its hue wherever
+ * it is shown and across checkouts. */
+
+/* Siblings of one stack must still be told apart, so exactly one label per
+ * row is assigned through distinctLaneColors, resolved over a sort that
+ * deliberately ignores head-ness: head-ness flips on checkout (the head
+ * branch jumps from priority 2 to the primary slot) and would otherwise
+ * recolor the whole stack on every switch. Primary first, then hidden, all
+ * taken from this one assignment. */
+const siblingChipColors = computed((): Map<string, string> => {
+  const labels = [...displayRefs.value]
+    .sort(
+      (a, b) =>
+        colorSortPriority(a.ref) - colorSortPriority(b.ref) ||
+        refDisplayLabel(a.ref).localeCompare(refDisplayLabel(b.ref)),
+    )
+    .map((entry) => refDisplayLabel(entry.ref))
+  const colors = distinctLaneColors(labels)
+  return new Map(labels.map((label, index) => [label, colors[index]]))
+})
+
+/** Sort key for stable sibling color assignment — no head-ness, which
+ * flips on checkout and would shuffle colors. */
+function colorSortPriority(ref: Ref): number {
+  if (ref.type === 'localBranch') return 1
+  if (ref.type === 'remoteBranch') return 2
+  return 3
+}
+
+/**
+ * Chip color for any ref on this row: the sibling assignment when present
+ * (primary and hidden chips), the label hue for preview chips, which are
+ * not part of the row's own ref list.
+ */
+function refChipColor(ref: Ref): string {
+  const label = refDisplayLabel(ref)
+  return siblingChipColors.value.get(label) ?? labelLaneColor(label)
+}
+
+/** Color of the row's primary chip, used by the row-level decorations so
+ * the tint, chip and accent bar read as one branch-colored block. */
+const primaryChipColor = computed(() =>
+  primaryRef.value ? refChipColor(primaryRef.value.ref) : chipColor.value,
+)
+
 const hasBranchRef = computed(() =>
   props.commit.refs.some((r) => r.type === 'localBranch' || r.type === 'remoteBranch'),
 )
@@ -167,8 +218,6 @@ const branchInputRef = computed(() =>
 
 useBranchInputFocus(isCreatingBranchHere, branchInputRef)
 
-const chipColor = computed(() => props.graphNode?.color ?? 'var(--color-fg-muted)')
-
 /**
  * Author info always lives in the graph column: the name folds into its
  * right edge (the avatar renders on the node in the overlay above).
@@ -178,14 +227,14 @@ const showInlineAuthor = computed(() => ui.isColumnVisible('author'))
 const REFS_RIGHT_PADDING = 8
 
 /**
- * Rows carrying a branch chip get a soft lane-colored tint instead of the old
- * chip→node connector line, which struck through any column dragged between
- * the refs column and the graph lane.
+ * Rows carrying a branch chip get a soft branch-colored tint instead of the
+ * old chip→node connector line, which struck through any column dragged
+ * between the refs column and the graph lane.
  */
 const rowTint = computed((): Record<string, string> | null => {
   if (props.graphNode == null || isCreatingBranchHere.value) return null
   if (!hasBranchRef.value) return null
-  return { backgroundColor: props.graphNode.color }
+  return { backgroundColor: primaryChipColor.value }
 })
 
 const previewConnectorStyle = computed((): Record<string, string> | null => {
@@ -308,6 +357,76 @@ function checkoutPrimaryBranch(): void {
   if (entry.ref.type === 'localBranch') repo.checkoutBranch(label)
 }
 
+/**
+ * Hovering a chip that has folded-away siblings (`+N`) reveals them in a
+ * dropdown that is teleported to the body — it must escape the row, because
+ * virtualized rows translate into stacking contexts, so a plain absolutely
+ * positioned dropdown would be painted over by the row below. Each sibling
+ * chip is clickable to switch straight to that branch.
+ */
+const hiddenAnchorRefs = useTemplateRef<HTMLElement>('hiddenAnchorRef')
+const hiddenAnchorRef = computed(() =>
+  Array.isArray(hiddenAnchorRefs.value)
+    ? (hiddenAnchorRefs.value[0] ?? null)
+    : hiddenAnchorRefs.value,
+)
+const hiddenOpen = ref(false)
+const hiddenRect = ref({ top: 0, left: 0, bottom: 0 })
+let hiddenCloseTimer: ReturnType<typeof setTimeout> | undefined
+
+function openHiddenRefs(): void {
+  cancelHiddenClose()
+  if (hiddenCount.value === 0) return
+  const anchor = hiddenAnchorRef.value
+  if (!anchor) return
+  const rect = anchor.getBoundingClientRect()
+  hiddenRect.value = {
+    top: rect.bottom + 4,
+    left: rect.left,
+    bottom: rect.bottom,
+  }
+  hiddenOpen.value = true
+}
+
+function closeHiddenRefs(): void {
+  hiddenOpen.value = false
+}
+
+function cancelHiddenClose(): void {
+  if (hiddenCloseTimer !== undefined) {
+    clearTimeout(hiddenCloseTimer)
+    hiddenCloseTimer = undefined
+  }
+}
+
+function scheduleHiddenClose(): void {
+  cancelHiddenClose()
+  hiddenCloseTimer = setTimeout(closeHiddenRefs, 120)
+}
+
+function onParentScroll(): void {
+  if (hiddenOpen.value) closeHiddenRefs()
+}
+
+function checkoutHiddenBranch(entry: DisplayRef): void {
+  closeHiddenRefs()
+  if (entry.ref.type !== 'localBranch' && entry.ref.type !== 'remoteBranch') return
+  const label = refDisplayLabel(entry.ref)
+  const branch = repo.branches.find((b) => b.name === label)
+  if (branch) {
+    if (branch.kind === 'remote') repo.checkoutRemoteBranch(branch)
+    else repo.checkoutBranch(branch.name)
+    return
+  }
+  if (entry.ref.type === 'localBranch') repo.checkoutBranch(label)
+}
+
+window.addEventListener('scroll', onParentScroll, true)
+onUnmounted(() => {
+  window.removeEventListener('scroll', onParentScroll, true)
+  cancelHiddenClose()
+})
+
 function mergeSquash(): void {
   void repo.runAction({ kind: 'merge', target: props.commit.sha, meta: { squash: true } })
 }
@@ -353,7 +472,7 @@ function openOnGithub(): void {
             v-if="primaryRef && !hasBranchRef && !isCreatingBranchHere"
             class="shrink-0 overflow-hidden"
             :ref-data="primaryRef.ref"
-            :color="chipColor"
+            :color="refChipColor(primaryRef.ref)"
             :has-local="primaryRef.hasLocal"
             :has-remote="primaryRef.hasRemote"
             :ahead="primaryRef.ahead"
@@ -377,7 +496,7 @@ function openOnGithub(): void {
             <div class="w-fit min-w-0 max-w-full shrink">
               <BranchRefChip
                 :ref-data="previewBranch.ref"
-                :color="chipColor"
+                :color="refChipColor(previewBranch.ref)"
                 :has-local="previewBranch.hasLocal"
                 :has-remote="previewBranch.hasRemote"
                 :ahead="trackingFor(previewBranch.ref, repo.branches).ahead"
@@ -389,43 +508,61 @@ function openOnGithub(): void {
           </div>
           <template v-if="hasBranchRef && primaryRef && !isCreatingBranchHere">
             <div
-              class="relative flex min-w-0 flex-1 items-center gap-1"
+              class="relative flex min-w-0 flex-1 items-center"
               @dblclick.stop="checkoutPrimaryBranch()"
             >
-              <div class="w-fit min-w-0 max-w-full shrink">
-                <BranchRefChip
-                  :ref-data="primaryRef.ref"
-                  :color="chipColor"
-                  :has-local="primaryRef.hasLocal"
-                  :has-remote="primaryRef.hasRemote"
-                  :ahead="primaryRef.ahead"
-                  :behind="primaryRef.behind"
-                />
-              </div>
-              <div class="group/extra contents">
+              <div
+                ref="hiddenAnchorRef"
+                class="flex w-fit shrink-0 items-center gap-1"
+                @mouseenter="openHiddenRefs"
+                @mouseleave="scheduleHiddenClose"
+              >
+                <div class="w-fit min-w-0 max-w-full">
+                  <BranchRefChip
+                    :ref-data="primaryRef.ref"
+                    :color="refChipColor(primaryRef.ref)"
+                    :has-local="primaryRef.hasLocal"
+                    :has-remote="primaryRef.hasRemote"
+                    :ahead="primaryRef.ahead"
+                    :behind="primaryRef.behind"
+                  />
+                </div>
                 <span
                   v-if="hiddenCount"
-                  class="flex h-[22px] min-w-[22px] shrink-0 cursor-default items-center justify-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-panel-raised)] px-1 text-[11px] font-semibold text-[var(--color-fg-muted)] transition-opacity group-hover/extra:opacity-0"
-                  :title="`+${hiddenCount} more`"
+                  class="flex h-[22px] min-w-[22px] shrink-0 cursor-default items-center justify-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-panel-raised)] px-1 text-[11px] font-semibold text-[var(--color-fg-muted)]"
+                  :title="`+${hiddenCount} more — hover to switch`"
                 >
                   +{{ hiddenCount }}
                 </span>
-                <div
-                  v-if="hiddenCount"
-                  class="absolute top-full left-0 z-50 mt-1 hidden min-w-max flex-col items-start gap-1 group-hover/extra:flex"
-                >
-                  <BranchRefChip
-                    v-for="(entry, i) in hiddenRefs"
-                    :key="i"
-                    :ref-data="entry.ref"
-                    :color="chipColor"
-                    :has-local="entry.hasLocal"
-                    :has-remote="entry.hasRemote"
-                    :ahead="entry.ahead"
-                    :behind="entry.behind"
-                  />
-                </div>
               </div>
+              <div class="min-w-0 flex-1" />
+              <Teleport to="body">
+                <div
+                  v-if="hiddenOpen"
+                  class="fixed z-[100] flex min-w-max flex-col items-start gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-app)] p-1.5 shadow-lg"
+                  :style="{ top: `${hiddenRect.top}px`, left: `${hiddenRect.left}px` }"
+                  @mouseenter="cancelHiddenClose"
+                  @mouseleave="scheduleHiddenClose"
+                >
+                  <button
+                    v-for="entry in hiddenRefs"
+                    :key="refDisplayLabel(entry.ref)"
+                    type="button"
+                    class="block w-fit text-left"
+                    :title="`Double-click to switch to ${refDisplayLabel(entry.ref)}`"
+                    @dblclick.stop="checkoutHiddenBranch(entry)"
+                  >
+                    <BranchRefChip
+                      :ref-data="entry.ref"
+                      :color="refChipColor(entry.ref)"
+                      :has-local="entry.hasLocal"
+                      :has-remote="entry.hasRemote"
+                      :ahead="entry.ahead"
+                      :behind="entry.behind"
+                    />
+                  </button>
+                </div>
+              </Teleport>
             </div>
           </template>
         </div>
