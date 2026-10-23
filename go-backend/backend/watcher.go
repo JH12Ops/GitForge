@@ -18,8 +18,8 @@ activated repository and publish SSE `git:changed` events with coarse scopes,
 so the renderer can refresh only what likely moved.
 
 V1 deliberately watches git plumbing only (index/HEAD/refs/in-progress
-operations); worktree file edits keep flowing through the renderer's periodic
-auto-fetch, which the coalescer cannot mask. */
+operations); worktree file edits surface via the renderer's periodic `status`
+poll and window-focus checks, which the coalescer cannot mask. */
 
 const watchCoalesceWindow = 250 * time.Millisecond
 

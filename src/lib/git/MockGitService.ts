@@ -373,6 +373,12 @@ export class MockGitService implements GitService {
   onProgress(_cb: (progress: import('@shared/git/models').OperationProgress) => void): () => void {
     return () => {}
   }
+
+  /** Focus-push lives in the Wails window and the real gateway; the mock has
+   * no window-event source, so focus checks fire only from DOM events. */
+  onWindowFocused(_cb: () => void): () => void {
+    return () => {}
+  }
 }
 
 function latencyFor(kind: GitActionKind): number {

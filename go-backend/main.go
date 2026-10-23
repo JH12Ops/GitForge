@@ -149,6 +149,9 @@ func main() {
 	})
 	window.OnWindowEvent(events.Mac.WindowDidBecomeMain, func(*application.WindowEvent) {
 		alignTrafficLights(window)
+		// The window is active again: make the renderer re-check repository
+		// changes (full snapshot + silent fetch) that landed while it slept.
+		backend.PublishWindowFocus()
 	})
 
 	// Native application menu (wails shell parity with the Tauri appMenu).

@@ -466,6 +466,7 @@ export class WailsGitService implements GitService {
   private static changedListeners = new Set<(event: RepoChangeEvent) => void>()
   private static progressListeners = new Set<(progress: OperationProgress) => void>()
   private static menuListeners = new Set<(action: MenuActionEvent) => void>()
+  private static focusListeners = new Set<() => void>()
 
   private static ensureEvents(): EventSource {
     if (this.events) return this.events
@@ -494,6 +495,11 @@ export class WailsGitService implements GitService {
         /* malformed payload — skip rather than break the stream */
       }
     })
+    // Bare `git:focus` frames (no payload to parse): the window regained
+    // main/key status, so the renderer should re-check repository changes.
+    es.addEventListener('git:focus', () => {
+      for (const cb of this.focusListeners) cb()
+    })
     this.events = es
     return es
   }
@@ -503,7 +509,8 @@ export class WailsGitService implements GitService {
       this.events &&
       this.changedListeners.size === 0 &&
       this.progressListeners.size === 0 &&
-      this.menuListeners.size === 0
+      this.menuListeners.size === 0 &&
+      this.focusListeners.size === 0
     ) {
       this.events.close()
       this.events = null
@@ -534,6 +541,16 @@ export class WailsGitService implements GitService {
     WailsGitService.menuListeners.add(cb)
     return () => {
       WailsGitService.menuListeners.delete(cb)
+      WailsGitService.releaseEvents()
+    }
+  }
+
+  /** The native window regained main/key status (backend WindowDidBecomeMain). */
+  onWindowFocused(cb: () => void): () => void {
+    WailsGitService.ensureEvents()
+    WailsGitService.focusListeners.add(cb)
+    return () => {
+      WailsGitService.focusListeners.delete(cb)
       WailsGitService.releaseEvents()
     }
   }

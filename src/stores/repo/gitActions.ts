@@ -26,6 +26,22 @@ import type { RepositoryState } from './types'
 let autoFetchTimer: ReturnType<typeof setTimeout> | undefined
 let autoFetchInFlight = false
 
+/** Window-focus change checks (see `requestChangesCheck`). The DOM `focus`
+ * event and the backend's `git:focus` SSE event (WindowDidBecomeMain) both
+ * land for one activation; this timer and the dedupe window collapse them
+ * into a single check so nothing double-fetches. */
+const FOCUS_CHECK_DEBOUNCE_MS = 200
+const FOCUS_CHECK_DEDUPE_MS = 1_000
+let focusCheckTimer: ReturnType<typeof setTimeout> | undefined
+let lastFocusCheckAt = 0
+
+/** Periodic working-tree check. The backend watcher only sees .git plumbing
+ * (index/HEAD/refs), so worktree edits made outside GitForge would never
+ * reach the UI; this poll closes that gap (see also `restartAutoFetch`,
+ * which covers the remote side). */
+const STATUS_POLL_INTERVAL_MS = 15_000
+let statusPollTimer: ReturnType<typeof setTimeout> | undefined
+
 /** Push flavors that can fail with `NoUpstream` on a brand-new branch. */
 const UPSTREAM_OFFER_KINDS: Set<GitAction['kind']> = new Set([
   'push',
@@ -38,6 +54,20 @@ function clearAutoFetchTimer(): void {
   if (autoFetchTimer !== undefined) {
     clearTimeout(autoFetchTimer)
     autoFetchTimer = undefined
+  }
+}
+
+function clearStatusPollTimer(): void {
+  if (statusPollTimer !== undefined) {
+    clearTimeout(statusPollTimer)
+    statusPollTimer = undefined
+  }
+}
+
+function clearFocusCheckTimer(): void {
+  if (focusCheckTimer !== undefined) {
+    clearTimeout(focusCheckTimer)
+    focusCheckTimer = undefined
   }
 }
 
@@ -57,6 +87,11 @@ type GitActionsStore = RepositoryState & {
   restartAutoFetch(): void
   stopAutoFetch(): void
   runAutoFetch(): Promise<void>
+  requestChangesCheck(): void
+  checkChanges(): Promise<void>
+  restartStatusPoll(): void
+  stopStatusPoll(): void
+  runStatusPoll(): Promise<void>
   checkoutBranchForIntegrate(branch: Branch): Promise<boolean>
   beginCreateBranch(options?: { startPoint?: string; sha?: string }): void
   submitBranchCreation(name: string): Promise<void>
@@ -259,6 +294,90 @@ export const gitActions = {
       // Reschedule from the current settings so interval changes apply
       // without reopening the repo.
       if (this.repository) this.restartAutoFetch()
+    }
+  },
+
+  /**
+   * Entry point for window-focus change checks (`requestChangesCheck` /
+   * `checkChanges`). Both the DOM `focus`/`visibilitychange` events and the
+   * backend's `git:focus` SSE event (native WindowDidBecomeMain) call this.
+   * Back-to-back focus notifications (e.g. a native dialog detour, or both
+   * sources firing for one activation) coalesce into a single check: the
+   * pending timer short-circuits later callers, and the dedupe window
+   * swallows any fire after a check settles.
+   */
+  requestChangesCheck(this: GitActionsStore): void {
+    if (focusCheckTimer !== undefined) return
+    if (Date.now() - lastFocusCheckAt < FOCUS_CHECK_DEDUPE_MS) return
+    focusCheckTimer = setTimeout(() => {
+      focusCheckTimer = undefined
+      lastFocusCheckAt = Date.now()
+      void this.checkChanges()
+    }, FOCUS_CHECK_DEBOUNCE_MS)
+  },
+
+  /**
+   * Re-checks repository changes after the window regained focus:
+   * a full snapshot refresh (local changes — commits, branches, working
+   * tree; everything that can land while the app is inactive, e.g. from
+   * another tool or a coworker using the same checkout) followed by the
+   * silent auto-fetch tick (remote changes — re-reads upstream refs so
+   * ahead/behind is current). Fetch failures stay silent like auto-fetch.
+   */
+  async checkChanges(this: GitActionsStore): Promise<void> {
+    try {
+      if (!this.repository) return
+      // Never compete with a manual operation or a tab switch.
+      if (this.busyAction || this.inProgressOperation || this.refreshing || this.loading) return
+      await this.refreshSnapshot()
+      await this.runAutoFetch()
+    } catch (err) {
+      console.error('[gitforge] focus check failed:', err)
+    }
+  },
+
+  restartStatusPoll(this: GitActionsStore): void {
+    clearStatusPollTimer()
+    // No repo open: nothing to poll.
+    if (!this.repository) return
+    statusPollTimer = setTimeout(() => {
+      void this.runStatusPoll()
+    }, STATUS_POLL_INTERVAL_MS)
+  },
+
+  stopStatusPoll(): void {
+    clearStatusPollTimer()
+  },
+
+  /** Clears focus-check and status-poll module state. Companion of
+   * `resetRefreshScheduler`: test isolation, and a clean slate when the
+   * repository screen tears down. */
+  resetBackgroundChecks(): void {
+    clearFocusCheckTimer()
+    clearStatusPollTimer()
+    lastFocusCheckAt = 0
+  },
+
+  /** One periodic working-tree check. Errors and busy windows are skipped
+   * silently: the next tick re-reads status anyway, and the watcher still
+   * reports .git-plumbing changes that arrive meanwhile. */
+  async runStatusPoll(this: GitActionsStore): Promise<void> {
+    statusPollTimer = undefined
+    try {
+      if (typeof document !== 'undefined' && document.hidden) return
+      if (!this.repository) return
+      if (this.busyAction || this.inProgressOperation || this.refreshing || this.loading) return
+      // A silent auto-fetch resupplies status (and upstream numbers) on its
+      // own; let that refresh land instead of issuing a duplicate request.
+      if (isAutoFetchInFlight()) return
+      // `status`-scoped snapshot: cheap (single `git status` plus repository
+      // meta, so ahead/behind stays fresh) and exactly what the watcher's
+      // plumbing scopes do not cover.
+      await this.refreshSnapshot(['status'])
+    } catch (err) {
+      console.error('[gitforge] status poll failed:', err)
+    } finally {
+      if (this.repository) this.restartStatusPoll()
     }
   },
 

@@ -117,6 +117,14 @@ func (h *eventHub) Publish(event, payload string) {
 	}
 }
 
+// PublishWindowFocus tells the renderer the native window regained key
+// status, so it can re-check repository changes that landed while the app
+// was inactive (worktree edits, fetches from other tools). Fired by the
+// main package's WindowDidBecomeMain hook.
+func PublishWindowFocus() {
+	hub.Publish("git:focus", "{}")
+}
+
 func handleSSE(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 

@@ -104,5 +104,8 @@ export interface GitService {
   readonly commitPage: CommitPageInfo
   onRepositoryChanged(cb: (event: RepoChangeEvent) => void): () => void
   onProgress(cb: (progress: OperationProgress) => void): () => void
+  /** Native window regained main/key status: the renderer should re-check
+   * repository changes. Optional; mocks and the browser gateway omit it. */
+  onWindowFocused?(cb: () => void): () => void
   load?(): Promise<RepositoryData>
 }
