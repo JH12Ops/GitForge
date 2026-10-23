@@ -176,13 +176,22 @@ export const gitActions = {
       UPSTREAM_OFFER_KINDS.has(action.kind) &&
       branchName
     ) {
-      const create = await usePromptStore().confirm({
+      // Input prefilled with the local branch name: confirm as-is to publish
+      // it unchanged, or edit the name to publish it under a rename.
+      const remoteBranch = await usePromptStore().prompt({
         title: 'Create remote branch',
-        message: `“${branchName}” doesn't exist on the remote yet. Create it and push?`,
+        message: `“${branchName}” doesn't exist on the remote yet. Edit the name to publish it under a different name.`,
+        defaultValue: branchName,
         confirmLabel: 'Create and push',
       })
-      if (create) {
-        return this.runAction({ kind: 'push-upstream' }, { skipConfirm: true })
+      if (remoteBranch) {
+        return this.runAction(
+          {
+            kind: 'push-upstream',
+            ...(remoteBranch !== branchName ? { meta: { remoteBranch } } : {}),
+          },
+          { skipConfirm: true },
+        )
       }
     }
 

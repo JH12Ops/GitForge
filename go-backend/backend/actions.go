@@ -826,6 +826,15 @@ func routeAction(c actionContext, kind, target string, meta map[string]any) (str
 			remote = "origin"
 		}
 
+		// Optional publish-as rename: push the local branch under a
+		// different name on the remote via refspec `<branch>:<remoteBranch>`.
+		remoteBranch, _ := metaString(meta, "remoteBranch")
+		remoteBranch = strings.TrimSpace(remoteBranch)
+
+		if remoteBranch == "" {
+			remoteBranch = branch
+		}
+
 		if gerr := rejectOptionLike(remote, "remote"); gerr != nil {
 			return "", gerr
 		}
@@ -834,11 +843,21 @@ func routeAction(c actionContext, kind, target string, meta map[string]any) (str
 			return "", gerr
 		}
 
-		if _, gerr := c.runStream([]string{"push", "--set-upstream", remote, branch}, "push"); gerr != nil {
+		if gerr := rejectOptionLike(remoteBranch, "remote branch"); gerr != nil {
 			return "", gerr
 		}
 
-		return "Created " + remote + "/" + branch + " and pushed", nil
+		refspec := branch
+
+		if remoteBranch != branch {
+			refspec = branch + ":" + remoteBranch
+		}
+
+		if _, gerr := c.runStream([]string{"push", "--set-upstream", remote, refspec}, "push"); gerr != nil {
+			return "", gerr
+		}
+
+		return "Created " + remote + "/" + remoteBranch + " and pushed", nil
 
 	case "push-tags":
 		if _, gerr := c.runStream([]string{"push", "--tags"}, "push-tags"); gerr != nil {
