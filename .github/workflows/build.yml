@@ -23,11 +23,13 @@ jobs:
           # Apple silicon: native build
           - label: darwin-arm64
             os: macos-latest
-          # Intel: cross-built on the arm64 runner via -arch x86_64
+            goarch: arm64
+          # Intel: cross-built on the arm64 runner; the arch must ride on the
+          # compiler command (CC), not just CGO_CFLAGS, or cgo drops the
+          # darwin ObjC files.
           - label: darwin-amd64
             os: macos-latest
             goarch: amd64
-            arch-flags: "-arch x86_64"
           - label: windows-amd64
             os: windows-latest
           - label: linux-amd64
@@ -46,11 +48,11 @@ jobs:
           go-version-file: go-backend/go.mod
           cache-dependency-path: go-backend/go.sum
 
-      - name: Install GTK/WebKit dev dependencies (Linux)
+      - name: Install GTK4/WebKitGTK 6.0 dev dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+          sudo apt-get install --no-install-recommends -y libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
 
       - name: Ensure MinGW is available (Windows)
         if: runner.os == 'Windows'
@@ -72,9 +74,11 @@ jobs:
         if: runner.os == 'macOS'
         working-directory: go-backend
         env:
-          GOARCH: ${{ matrix.goarch || 'arm64' }}
-          CGO_CFLAGS: "-O2 -g -mmacosx-version-min=11.0 ${{ matrix.arch-flags }}"
-          CGO_LDFLAGS: "-mmacosx-version-min=11.0 ${{ matrix.arch-flags }}"
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "1"
+          CC: "clang -arch ${{ matrix.goarch }}"
+          CGO_CFLAGS: "-O2 -g -mmacosx-version-min=11.0"
+          CGO_LDFLAGS: "-mmacosx-version-min=11.0"
         run: |
           go build -o GitForge.app/Contents/MacOS/GitForge .
           mkdir -p GitForge.app/Contents/Resources
@@ -112,7 +116,7 @@ jobs:
           path: GitForge-${{ matrix.label }}.zip
           if-no-files-found: error
 
-      # Linux: dynamically linked against the system GTK3/WebKit2GTK 4.1
+      # Linux: dynamically linked against the system GTK4/WebKitGTK 6.0
       - name: Build binary (Linux)
         if: runner.os == 'Linux'
         working-directory: go-backend
