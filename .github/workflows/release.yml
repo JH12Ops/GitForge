@@ -1,0 +1,226 @@
+name: Release
+
+# Cuts a versioned GitHub Release from `main`:
+#   1. push to main touching app code → decide + apply the version bump
+#      (scripts/release-bump.mjs, Conventional Commits; default patch)
+#   2. commit the synced version markers, tag v<semver>
+#   3. build every platform from the tag, publish assets + CHECKSUMS.txt
+#
+# Docs/website-only merges don't release (path filter below). Runs against an
+# already-tagged version are a no-op, and GITHUB_TOKEN pushes don't re-trigger
+# workflows — the pipeline cannot loop. Re-run via workflow_dispatch.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'shared/**'
+      - 'public/**'
+      - 'go-backend/**'
+      - 'index.html'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Bump version and tag
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.bump.outputs.should_release }}
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      # Full history: the bump level is derived from tags and commit messages
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - id: bump
+        name: Decide and apply the version bump
+        run: node scripts/release-bump.mjs --apply >> "$GITHUB_OUTPUT"
+
+      - name: Sync version markers
+        if: steps.bump.outputs.should_release == 'true'
+        run: npm run sync-version
+
+      - name: Commit and tag
+        if: steps.bump.outputs.should_release == 'true'
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          git config user.name "gitforge-release"
+          git config user.email "gitforge-release@users.noreply.github.com"
+
+          git add package.json package-lock.json docs/index.html \
+            docs/llms.txt docs/llms-full.txt \
+            go-backend/GitForge.app/Contents/Info.plist
+
+          if git diff --cached --quiet; then
+            echo "Version files already in tree; nothing to commit."
+          else
+            git commit -m "chore(release): v$VERSION [skip ci]"
+          fi
+
+          if ! git rev-parse -q --verify "v$VERSION" >/dev/null; then
+            git tag -a "v$VERSION" -m "Release v$VERSION"
+          fi
+
+          git push origin "refs/heads/main" "v$VERSION"
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Apple Silicon: native build → DMG + portable .app.zip
+          - label: darwin-arm64
+            os: macos-latest
+          - label: windows-amd64
+            os: windows-latest
+          - label: linux-amd64
+            os: ubuntu-latest
+
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      # Build the tagged commit so the bundled APP_VERSION matches the release
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ needs.version.outputs.version }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go-backend/go.mod
+          cache-dependency-path: go-backend/go.sum
+
+      - name: Install GTK4/WebKitGTK 6.0 dev dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Ensure MinGW is available (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          if ! command -v gcc; then
+            choco install mingw --no-progress -y
+            echo "C:\\ProgramData\\mingw64\\mingw64\\bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # macOS: renderer + .app bundle with dist embedded (package-dmg.sh),
+      # then the drag-install DMG and a CHECKSUMS-verified portable .app.zip
+      - name: Build DMG and .app bundle (macOS)
+        if: runner.os == 'macOS'
+        run: npm run package:dmg
+
+      - name: Zip .app bundle (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mv "GitForge-$VERSION.dmg" "GitForge-v$VERSION-darwin-arm64.dmg"
+          ditto -c -k --keepParent go-backend/GitForge.app "GitForge-v$VERSION-darwin-arm64.app.zip"
+
+      - name: Upload macOS assets
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          name: GitForge-darwin-arm64
+          if-no-files-found: error
+          path: |
+            GitForge-v*-darwin-arm64.dmg
+            GitForge-v*-darwin-arm64.app.zip
+
+      # Windows: exe next to dist/ (ResolveDistDir walks up from the binary),
+      # zipped as one folder
+      - name: Build exe (Windows)
+        if: runner.os == 'Windows'
+        working-directory: go-backend
+        env:
+          GOARCH: amd64
+        run: go build -o GitForge.exe .
+
+      - name: Zip exe + dist (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path GitForge.exe, ..\dist -DestinationPath "..\GitForge-v$env:VERSION-windows-amd64.zip"
+
+      - name: Upload Windows asset
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: GitForge-windows-amd64
+          if-no-files-found: error
+          path: GitForge-v*-windows-amd64.zip
+
+      # Linux: dynamically linked against the system GTK4/WebKitGTK 6.0
+      - name: Build binary (Linux)
+        if: runner.os == 'Linux'
+        working-directory: go-backend
+        env:
+          CGO_ENABLED: "1"
+          CGO_CFLAGS: "-O2 -g"
+          CGO_LDFLAGS: "-O2 -g"
+        run: go build -o gitforge .
+
+      - name: Tar binary + dist (Linux)
+        if: runner.os == 'Linux'
+        working-directory: go-backend
+        run: tar -czf "../GitForge-v$VERSION-linux-amd64.tar.gz" gitforge -C .. dist
+
+      - name: Upload Linux asset
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: GitForge-linux-amd64
+          if-no-files-found: error
+          path: GitForge-v*-linux-amd64.tar.gz
+
+  publish:
+    name: Publish GitHub Release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: assets
+
+      - name: Assemble CHECKSUMS.txt
+        run: |
+          mkdir -p release-assets
+          find assets -type f -exec mv {} release-assets/ \;
+          cd release-assets
+          find . -maxdepth 1 -type f ! -name CHECKSUMS.txt -printf '%f\n' \
+            | sort | xargs shasum -a 256 > CHECKSUMS.txt
+          cat CHECKSUMS.txt
+
+      - name: Create the release
+        run: gh release create "v$VERSION" --verify-tag --title "GitForge v$VERSION" --generate-notes release-assets/*

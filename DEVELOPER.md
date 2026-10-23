@@ -65,112 +65,42 @@ Architecture, stack, and extension points are documented in **[ARCHITECTURE.md](
 
 ## Creating a release
 
-Releases are versioned with git tags (`v*`). Pushing a tag triggers GitHub Actions to build the macOS app bundles (Apple silicon + Intel) and attach them to a [GitHub Release](https://github.com/JH12Ops/GitForge/releases).
+Releases are automated. Every merge to `main` that changes app code bumps the version, tags `vX.Y.Z`, and publishes a [GitHub Release](https://github.com/JH12Ops/GitForge/releases) with installer bundles for all platforms plus a `CHECKSUMS.txt` manifest. There are no manual bump/tag/push steps.
 
-### Overview
+### How it works
 
-```text
-1. Update docs & bump version in package.json
-2. Run tests
-3. Commit → tag vX.Y.Z → push commit + tag
-4. CI builds macOS .app zips (arm64 + amd64) and publishes the release
+The [Release workflow](.github/workflows/release.yml) triggers on a push to `main` that touches app code (`src/`, `go-backend/`, `shared/`, `public/`, `index.html`, `vite.config.ts`, `package.json`, `package-lock.json`). Docs/website-only merges do not release.
+
+1. [`scripts/release-bump.mjs`](scripts/release-bump.mjs) picks the bump level from the commit messages since the last release tag:
+   - default: **patch**
+   - `feat: …` / `feat(scope): …` → **minor**
+   - breaking changes (`feat!: …`, a `BREAKING CHANGE:` footer, or `+semver: major`) → **major**
+   - `+semver: minor` / `+semver: patch` anywhere in a commit message overrides
+2. It writes the next version into `package.json`, `npm run sync-version` propagates the markers (lockfile, docs pages, `Info.plist`), the workflow commits the result as `chore(release): vX.Y.Z [skip ci]`, and pushes an annotated `vX.Y.Z` tag.
+3. Build jobs check out the tag and build every platform — macOS (drag-install DMG + portable `GitForge-v*-darwin-arm64.app.zip` with the renderer embedded), Windows (zip with the exe next to `dist/`), Linux (tarball with the binary next to `dist/`) — and a publish job attaches the assets plus `CHECKSUMS.txt` to the Release with generated notes.
+
+This makes the pipeline loop-safe: a run against an already-tagged HEAD is a no-op, and the release bot's own pushes cannot re-trigger workflows. Squash-merged PRs use the PR title as the commit message, so use Conventional Commits titles (`fix: …`, `feat: …`) to control the bump. Preview decisions locally with a dry run:
+
+```bash
+node scripts/release-bump.mjs
 ```
 
-The packaged app checks for updates by comparing its version against the latest GitHub release tag. Users can also check manually via **GitForge → Check for Updates…** in the menu bar.
+To retry a release after a failed run, use **Run workflow** from the Actions tab (idempotent), or delete the stale tag on GitHub and dispatch again.
 
-### 1. Prepare the release
+### Verify the release
 
-Before bumping the version:
-
-1. **Sync documentation** so it matches the current codebase:
-   - [README.md](README.md) — feature table, install notes
-   - [ARCHITECTURE.md](ARCHITECTURE.md) — stack versions, file layout
-   - [docs/index.html](docs/index.html) — landing page copy and install section
-   - [docs/llms.txt](docs/llms.txt) — AI-readable site summary (version synced automatically)
-2. **Refresh the screenshot** if the UI changed. Run mock mode, capture the main view at 1440×900, and overwrite [docs/screenshot.png](docs/screenshot.png):
+1. Open the new release on GitHub and confirm the platform assets are attached (`-darwin-arm64`, `-windows-amd64`, `-linux-amd64`) plus `CHECKSUMS.txt`.
+2. On macOS, install in one line via the installer script (**Right-click → Open** on first launch for Gatekeeper if you run the app directly from the zip instead):
 
    ```bash
-   VITE_USE_MOCK=true npm run dev
+   sh -c "$(curl -fsSL https://raw.githubusercontent.com/JH12Ops/GitForge/main/scripts/install.sh)"
    ```
 
-3. **Verify** the tree is healthy:
-
-   ```bash
-   npm run typecheck
-   npm run test
-   npm run go:test
-   ```
-
-### 2. Bump the version
-
-Update `"version"` in [package.json](package.json) only, then sync derived markers:
-
-```bash
-npm run sync-version
-```
-
-Use [semver](https://semver.org/):
-
-| Bump | Example |
-|------|---------|
-| Patch | `1.0.2` → `1.0.3` |
-| Minor | `1.0.2` → `1.1.0` |
-| Major | `1.0.2` → `2.0.0` |
-
-Then sync version markers across docs and the app bundle:
-
-```bash
-npm run sync-version
-```
-
-The app reads `package.json` at build time (`shared/app/metadata.ts`); `sync-version` propagates the version to `package-lock.json`, `go-backend/GitForge.app/Contents/Info.plist`, `docs/index.html`, `docs/llms.txt` and `docs/llms-full.txt`.
-
-Confirm the tag does not already exist:
-
-```bash
-git tag -l 'v*'
-```
-
-### 3. Commit and tag
-
-Stage all release changes (docs, version bump, and any pending source changes):
-
-```bash
-git add -A
-git diff --cached --stat   # review what will ship
-```
-
-Commit and create an annotated tag (replace `X.Y.Z` with the new version):
-
-```bash
-git commit -m "Release vX.Y.Z
-
-<short summary of what changed since the last release>"
-git tag -a vX.Y.Z -m "Release vX.Y.Z"
-```
-
-### 4. Push and publish
-
-Push the commit and tag to `main`:
-
-```bash
-git push origin main
-git push origin vX.Y.Z
-```
-
-The [Release workflow](.github/workflows/release.yml) runs when a `v*` tag is pushed: it runs `npm ci` plus the typecheck/test/vet gates, builds the Go binary into the `.app` bundle on both macOS runners (Apple silicon + Intel), re-signs ad-hoc, zips with `ditto`, and attaches the zips to the GitHub Release. A final job publishes `CHECKSUMS.txt` with sha256 for every asset.
-
-Monitor the run under **Actions** on GitHub. When it succeeds, the app zips appear on the release page.
-
-### 5. Verify the release
-
-1. Open the new release on GitHub and confirm the platform assets are attached (`-darwin-arm64` and `-darwin-amd64` `.app.zip`).
-2. Download, unzip, and drag **GitForge.app** to `/Applications`. Ad-hoc signed builds may require **Right-click → Open** on first launch (Gatekeeper).
-3. Launch the app and use **GitForge → Check for Updates…** — it should report you are on the latest version.
+3. Launch GitForge and use **GitForge → Check for Updates…** — the app compares its version against the latest release tag, so it should report you are on the latest version.
 
 ### macOS code signing
 
-CI refreshes the ad-hoc signature after building (`codesign --force --deep --sign -`), which is enough for local installs. To ship Developer ID signed + notarized builds, extend the release workflow's **Build GitForge.app** step:
+CI refreshes the ad-hoc signature after building (`codesign --force --deep --sign -`), which is enough for local installs. To ship Developer ID signed + notarized builds, extend the Release workflow's **Build DMG and .app bundle (macOS)** step:
 
 1. Enroll in the [Apple Developer Program](https://developer.apple.com/programs/).
 2. Add these GitHub repository secrets (Settings → Secrets and variables → Actions):
@@ -188,7 +118,7 @@ CI refreshes the ad-hoc signature after building (`codesign --force --deep --sig
 
 ### Build a bundle locally (optional)
 
-To test packaging before pushing a tag:
+To test packaging before a release ships:
 
 ```bash
 npm run build && npm run go:build && open go-backend/GitForge.app
@@ -202,4 +132,4 @@ The binary inside `GitForge.app` is untracked; `Info.plist` is the tracked templ
 
 ### Release command
 
-Release automation lives in `scripts/sync-version.mjs` (invoked via `npm run sync-version`). Follow the steps above to bump, verify, commit, and tag. You still need to push the commit and tag yourself to trigger CI.
+Release automation lives in `.github/workflows/release.yml` + `scripts/release-bump.mjs` (see **Creating a release**). Version markers are still synced by `npm run sync-version`; follow the steps above for local packaging.
