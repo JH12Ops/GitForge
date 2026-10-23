@@ -134,6 +134,13 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # macOS builds the renderer inside package-dmg.sh (and embeds it in the
+      # bundle). The other platforms serve dist/ from disk next to the binary,
+      # and dist/ is gitignored — so it must be built here.
+      - name: Build renderer (Windows and Linux)
+        if: runner.os != 'macOS'
+        run: npm run build
+
       # macOS: renderer + .app bundle with dist embedded (package-dmg.sh),
       # then the drag-install DMG and a CHECKSUMS-verified portable .app.zip
       - name: Build DMG and .app bundle (macOS)
@@ -165,10 +172,12 @@ jobs:
           GOARCH: amd64
         run: go build -o GitForge.exe .
 
+      # Zip from the repo root: GitForge.exe at the archive root finds dist/
+      # beside it (ResolveDistDir walks up from the binary)
       - name: Zip exe + dist (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path GitForge.exe, ..\dist -DestinationPath "..\GitForge-v$env:VERSION-windows-amd64.zip"
+        run: Compress-Archive -Path go-backend/GitForge.exe, dist -DestinationPath "GitForge-v$env:VERSION-windows-amd64.zip"
 
       - name: Upload Windows asset
         if: runner.os == 'Windows'
