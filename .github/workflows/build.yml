@@ -20,16 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Apple silicon: native build
+          # Apple Silicon: native build
           - label: darwin-arm64
             os: macos-latest
             goarch: arm64
-          # Intel: cross-built on the arm64 runner; the arch must ride on the
-          # compiler command (CC), not just CGO_CFLAGS, or cgo drops the
-          # darwin ObjC files.
-          - label: darwin-amd64
-            os: macos-latest
-            goarch: amd64
           - label: windows-amd64
             os: windows-latest
           - label: linux-amd64
