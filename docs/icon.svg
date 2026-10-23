@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1d232e"/>
+      <stop offset="55%" stop-color="#10141c"/>
+      <stop offset="100%" stop-color="#0a0d12"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="50%" cy="0%" r="90%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ember" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff8a3d" stop-opacity="0.55"/>
+      <stop offset="45%" stop-color="#c2510f" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#52607a"/>
+      <stop offset="55%" stop-color="#333c4d"/>
+      <stop offset="100%" stop-color="#232a37"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a9744a"/>
+      <stop offset="100%" stop-color="#6f4526"/>
+    </linearGradient>
+    <radialGradient id="molten" cx="42%" cy="34%" r="80%">
+      <stop offset="0%" stop-color="#ffe9a8"/>
+      <stop offset="40%" stop-color="#ffb457"/>
+      <stop offset="100%" stop-color="#ff6b1f"/>
+    </radialGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="18" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-soft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+  </defs>
+
+  <!-- squircle plate -->
+  <rect x="8" y="8" width="1008" height="1008" rx="230" fill="url(#bg)"/>
+  <rect x="8" y="8" width="1008" height="1008" rx="230" fill="url(#sheen)"/>
+  <rect x="9.5" y="9.5" width="1005" height="1005" rx="228" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="3"/>
+
+  <!-- forge glow centered on the molten node -->
+  <ellipse cx="512" cy="500" rx="320" ry="240" fill="url(#ember)" filter="url(#soft)"/>
+
+  <!-- branch lanes feeding the molten node -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 150 395 C 300 395, 380 461, 446 485" stroke="#58a6ff" stroke-width="26"/>
+    <path d="M 150 575 C 300 575, 380 533, 446 509" stroke="#b48cf9" stroke-width="26"/>
+  </g>
+  <!-- branch start nodes -->
+  <g filter="url(#glow-soft)">
+    <circle cx="150" cy="395" r="22" fill="#2f6dce"/>
+    <circle cx="150" cy="395" r="22" fill="none" stroke="#7db3ff" stroke-width="5"/>
+    <circle cx="150" cy="575" r="22" fill="#6b3fb0"/>
+    <circle cx="150" cy="575" r="22" fill="none" stroke="#c7a6ff" stroke-width="5"/>
+  </g>
+
+  <!-- anvil -->
+  <g>
+    <path d="M 230 635 H 620 C 690 635 760 613 802 581 L 842 581 C 848 613 830 671 768 707 L 640 735 C 616 760 601 801 601 845 L 722 917 C 733 928 726 947 702 947 H 342 C 318 947 311 928 322 917 L 443 845 C 443 801 428 760 404 735 L 262 735 C 240 735 230 719 230 699 Z" fill="url(#steel)"/>
+    <path d="M 252 653 H 610" stroke="#8b99b3" stroke-opacity="0.45" stroke-width="10" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- molten commit node -->
+  <g filter="url(#glow)">
+    <circle cx="512" cy="497" r="72" fill="url(#molten)"/>
+    <circle cx="512" cy="497" r="72" fill="none" stroke="#ffd08a" stroke-opacity="0.8" stroke-width="6"/>
+  </g>
+
+  <!-- sparks bursting below the node -->
+  <g fill="#ffb35e">
+    <circle cx="515" cy="575" r="8" opacity="0.9"/>
+    <circle cx="486" cy="588" r="5" opacity="0.6"/>
+    <circle cx="546" cy="568" r="6" opacity="0.7"/>
+    <circle cx="558" cy="590" r="4" opacity="0.55"/>
+    <circle cx="534" cy="602" r="4" opacity="0.5"/>
+  </g>
+
+  <!-- motion lines trailing the swing in from the top right -->
+  <!-- arcs concentric on the strike point, sweeping up behind the hammer -->
+  <!-- rotated 95° clockwise in place (about the lines' own centroid) -->
+  <g fill="none" stroke="#8b99b3" stroke-linecap="round" transform="rotate(95 742 276)">
+    <path d="M 648 241 A 290 290 0 0 0 758 343" stroke-width="14" stroke-opacity="0.45"/>
+    <path d="M 687 217 A 330 330 0 0 0 798 332" stroke-width="12" stroke-opacity="0.35"/>
+    <path d="M 724 194 A 370 370 0 0 0 842 329" stroke-width="10" stroke-opacity="0.28"/>
+  </g>
+
+  <!-- hammer in profile, resting its face on the node -->
+  <g transform="translate(583,343) rotate(108) scale(1.5)">
+    <rect x="-11" y="-210" width="22" height="196" rx="11" fill="url(#wood)"/>
+    <rect x="-62" y="-26" width="124" height="52" rx="13" fill="url(#steel)"/>
+    <rect x="-54" y="10" width="108" height="12" rx="6" fill="#8b99b3" opacity="0.5"/>
+  </g>
+
+  <!-- impact sparks scattering off the strike, up and to the left -->
+  <g fill="#ffb35e">
+    <circle cx="492" cy="390" r="8" opacity="0.9"/>
+    <circle cx="472" cy="362" r="6" opacity="0.7"/>
+    <circle cx="500" cy="352" r="5" opacity="0.6"/>
+    <circle cx="455" cy="340" r="5" opacity="0.6"/>
+    <circle cx="480" cy="318" r="4" opacity="0.5"/>
+    <circle cx="445" cy="300" r="6" opacity="0.7"/>
+    <circle cx="465" cy="270" r="4" opacity="0.5"/>
+    <circle cx="438" cy="262" r="5" opacity="0.55"/>
+    <circle cx="452" cy="232" r="4" opacity="0.45"/>
+    <circle cx="425" cy="238" r="3" opacity="0.4"/>
+  </g>
+</svg>

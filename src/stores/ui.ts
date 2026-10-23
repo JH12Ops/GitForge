@@ -1,0 +1,468 @@
+import { defineStore } from 'pinia'
+import type { GraphScope } from '@shared/git/models'
+import { syncThemePreference } from '@/lib/applyTheme'
+import { defaultKeymap, sanitizeKeymap, type CommandId, type KeyBinding, type Keymap } from '@/lib/keybindings'
+import {
+  clampAutoFetchIntervalSec,
+  clampCommitGraphLimit,
+  clampColumnWidth,
+  clampLeftSidebarSize,
+  clampRightSidebarSize,
+  clampWorkingTreeChangesSize,
+  shouldCollapseLeftSidebar,
+  shouldCollapseRightSidebar,
+  DEFAULT_COLUMN_ORDER,
+  sanitizeColumnOrder,
+  DEFAULT_COLUMNS,
+  DEFAULT_COLUMN_WIDTHS,
+  DEFAULT_SECTIONS,
+  DEFAULT_VISIBLE_SECTIONS,
+  defaultPreferences,
+  mergePreferences,
+  migratePreferences,
+  PREFERENCES_KEY,
+  LEGACY_PREFERENCES_KEY,
+  PREFERENCES_VERSION,
+  type CommitColumnKey,
+  type CommitColumnWidthKey,
+  type CommitColumnDropSide,
+  type DiffViewMode,
+  type FileListView,
+  type RepoTabPref,
+  type SectionKey,
+  type SidebarSectionState,
+  type UiMode,
+  type UserPreferences,
+} from '@/lib/preferences'
+import type { ThemePreference } from '@/lib/themes'
+
+const LEGACY_STORE_KEY = 'git-light:ui'
+let persistTimer: ReturnType<typeof setTimeout> | undefined
+let persistenceBound = false
+
+async function readPersisted(): Promise<Partial<UserPreferences> | null> {
+  try {
+    const raw =
+      localStorage.getItem(PREFERENCES_KEY) ??
+        localStorage.getItem(LEGACY_PREFERENCES_KEY) ??
+        localStorage.getItem(LEGACY_STORE_KEY)
+    return raw ? (JSON.parse(raw) as Partial<UserPreferences>) : null
+  } catch {
+    return null
+  }
+}
+
+function writePersisted(state: UserPreferences): void {
+  try {
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(state))
+  } catch {
+    /* ignore */
+  }
+}
+
+function snapshot(state: {
+  leftSize: number
+  rightSize: number
+  workingTreeChangesSize: number
+  leftCollapsed: boolean
+  rightCollapsed: boolean
+  sections: Record<string, boolean>
+  visibleSections: Record<string, boolean>
+  columns: UserPreferences['columns']
+  columnWidths: UserPreferences['columnWidths']
+  columnOrder: UserPreferences['columnOrder']
+  graphScopeAll: boolean
+  commitGraphLimit: number
+  fileListView: FileListView
+  lastRepositoryPath: string | null
+  openRepoTabs: RepoTabPref[]
+  diffViewMode: DiffViewMode
+  theme: ThemePreference
+  uiMode: UiMode
+  ignoreWhitespace: boolean
+  blameWordWrap: boolean
+  diffWordWrap: boolean
+  signOffCommit: boolean
+  signCommit: boolean
+  autoFetchIntervalSec: number
+  keybindings: Keymap
+}): UserPreferences {
+  return {
+    leftSize: state.leftSize,
+    rightSize: state.rightSize,
+    workingTreeChangesSize: state.workingTreeChangesSize,
+    leftCollapsed: state.leftCollapsed,
+    rightCollapsed: state.rightCollapsed,
+    sections: state.sections,
+    visibleSections: state.visibleSections,
+    columns: state.columns,
+    columnWidths: state.columnWidths,
+    columnOrder: state.columnOrder,
+    graphScopeAll: state.graphScopeAll,
+    commitGraphLimit: state.commitGraphLimit,
+    fileListView: state.fileListView,
+    lastRepositoryPath: state.lastRepositoryPath,
+    openRepoTabs: state.openRepoTabs,
+    diffViewMode: state.diffViewMode,
+    theme: state.theme,
+    uiMode: state.uiMode,
+    ignoreWhitespace: state.ignoreWhitespace,
+    blameWordWrap: state.blameWordWrap,
+    diffWordWrap: state.diffWordWrap,
+    signOffCommit: state.signOffCommit,
+    signCommit: state.signCommit,
+    autoFetchIntervalSec: state.autoFetchIntervalSec,
+    keybindings: state.keybindings,
+    prefsVersion: PREFERENCES_VERSION,
+  }
+}
+
+export const useUiStore = defineStore('ui', {
+  state: () => ({
+    leftSize: 18,
+    rightSize: 24,
+    workingTreeChangesSize: defaultPreferences().workingTreeChangesSize,
+    leftCollapsed: false,
+    rightCollapsed: false,
+    sections: { ...DEFAULT_SECTIONS } as Record<string, boolean>,
+    visibleSections: { ...DEFAULT_VISIBLE_SECTIONS } as Record<string, boolean>,
+    columns: { ...DEFAULT_COLUMNS },
+    columnWidths: { ...DEFAULT_COLUMN_WIDTHS },
+    columnOrder: [...DEFAULT_COLUMN_ORDER],
+    graphScopeAll: defaultPreferences().graphScopeAll,
+    commitGraphLimit: defaultPreferences().commitGraphLimit,
+    fileListView: 'path' as FileListView,
+    lastRepositoryPath: null as string | null,
+    openRepoTabs: [] as RepoTabPref[],
+    diffViewMode: 'unified' as DiffViewMode,
+    theme: defaultPreferences().theme,
+    uiMode: defaultPreferences().uiMode,
+    ignoreWhitespace: false,
+    blameWordWrap: false,
+    diffWordWrap: false,
+    signOffCommit: false,
+    signCommit: false,
+    autoFetchIntervalSec: defaultPreferences().autoFetchIntervalSec,
+    keybindings: defaultKeymap(),
+    commandPaletteOpen: false,
+    settingsOpen: false,
+    leftCollapseHint: false,
+    rightCollapseHint: false,
+    leftCollapsedBeforeDiff: null as boolean | null,
+    suppressPaneAnimation: false,
+  }),
+  getters: {
+    graphScope(state): GraphScope {
+      return state.graphScopeAll ? 'all' : 'head'
+    },
+    clampedCommitGraphLimit(state): number {
+      return clampCommitGraphLimit(state.commitGraphLimit)
+    },
+    isAdvanced(state): boolean {
+      return state.uiMode === 'advanced'
+    },
+    /**
+     * Data columns (after the pinned ref/graph pair) in user order, filtered
+     * down to the visible ones. Header and every row type iterate this so
+     * column ordering stays in lockstep.
+     */
+    tailColumnOrder(): CommitColumnWidthKey[] {
+      return this.orderedColumnOrder.filter(
+        (key) => key !== 'refs' && key !== 'graph',
+      )
+    },
+    /**
+     * Every renderable column key — including the pinned refs/graph pair —
+     * in the user's saved order. Header and all row types loop this, so a
+     * column dragged left of the graph lands there in the header and the body.
+     */
+    orderedColumnOrder(state): CommitColumnWidthKey[] {
+      return state.columnOrder.filter(
+        (key) =>
+          key === 'refs' ||
+          key === 'graph' ||
+          key === 'commit' ||
+          (state.columns[key] ?? DEFAULT_COLUMNS[key]),
+      )
+    },
+  },
+  actions: {
+    async hydrate(): Promise<void> {
+      const saved = mergePreferences(migratePreferences(await readPersisted()))
+      this.leftSize = saved.leftSize
+      this.rightSize = saved.rightSize
+      this.workingTreeChangesSize = saved.workingTreeChangesSize
+      this.leftCollapsed = saved.leftCollapsed
+      this.rightCollapsed = saved.rightCollapsed
+      this.sections = { ...saved.sections }
+      this.visibleSections = { ...saved.visibleSections }
+      this.columns = saved.columns
+      this.columnWidths = saved.columnWidths
+      this.columnOrder = [...saved.columnOrder]
+      this.graphScopeAll = saved.graphScopeAll
+      this.commitGraphLimit = saved.commitGraphLimit
+      this.fileListView = saved.fileListView
+      this.lastRepositoryPath = saved.lastRepositoryPath
+      this.openRepoTabs = saved.openRepoTabs.map((tab) => ({ ...tab }))
+      this.diffViewMode = saved.diffViewMode
+      this.theme = saved.theme
+      this.uiMode = saved.uiMode
+      this.ignoreWhitespace = saved.ignoreWhitespace
+      this.blameWordWrap = saved.blameWordWrap
+      this.diffWordWrap = saved.diffWordWrap
+      this.signOffCommit = saved.signOffCommit
+      this.signCommit = saved.signCommit
+      this.autoFetchIntervalSec = saved.autoFetchIntervalSec
+      this.keybindings = saved.keybindings ? sanitizeKeymap(saved.keybindings) : defaultKeymap()
+      syncThemePreference(this.theme)
+      if (persistenceBound) return
+      persistenceBound = true
+      this.$subscribe(() => {
+        clearTimeout(persistTimer)
+        persistTimer = setTimeout(() => this.persistNow(), 200)
+      })
+      window.addEventListener('beforeunload', () => this.persistNow())
+    },
+    persistNow(): void {
+      clearTimeout(persistTimer)
+      persistTimer = undefined
+      writePersisted(
+        snapshot({
+          leftSize: this.leftSize,
+          rightSize: this.rightSize,
+          workingTreeChangesSize: this.workingTreeChangesSize,
+          leftCollapsed: this.leftCollapsed,
+          rightCollapsed: this.rightCollapsed,
+          sections: this.sections,
+          visibleSections: this.visibleSections,
+          columns: this.columns,
+          columnWidths: this.columnWidths,
+          columnOrder: this.columnOrder,
+          graphScopeAll: this.graphScopeAll,
+          commitGraphLimit: this.clampedCommitGraphLimit,
+          fileListView: this.fileListView,
+          lastRepositoryPath: this.lastRepositoryPath,
+          openRepoTabs: this.openRepoTabs,
+          diffViewMode: this.diffViewMode,
+          theme: this.theme,
+          uiMode: this.uiMode,
+          ignoreWhitespace: this.ignoreWhitespace,
+          blameWordWrap: this.blameWordWrap,
+          diffWordWrap: this.diffWordWrap,
+          signOffCommit: this.signOffCommit,
+          signCommit: this.signCommit,
+          autoFetchIntervalSec: this.autoFetchIntervalSec,
+          keybindings: this.keybindings,
+        }),
+      )
+    },
+    setLeftSize(size: number): void {
+      if (shouldCollapseLeftSidebar(size)) {
+        this.leftCollapsed = true
+        return
+      }
+      this.leftSize = clampLeftSidebarSize(size)
+    },
+    setRightSize(size: number): void {
+      if (shouldCollapseRightSidebar(size)) {
+        this.rightCollapsed = true
+        return
+      }
+      this.rightSize = clampRightSidebarSize(size)
+    },
+    setLeftCollapseHint(active: boolean): void {
+      this.leftCollapseHint = active
+    },
+    setRightCollapseHint(active: boolean): void {
+      this.rightCollapseHint = active
+    },
+    clearSidebarCollapseHints(): void {
+      this.leftCollapseHint = false
+      this.rightCollapseHint = false
+    },
+    setWorkingTreeChangesSize(size: number): void {
+      this.workingTreeChangesSize = clampWorkingTreeChangesSize(size)
+    },
+    openCommandPalette(): void {
+      this.commandPaletteOpen = true
+    },
+    closeCommandPalette(): void {
+      this.commandPaletteOpen = false
+    },
+    toggleCommandPalette(): void {
+      this.commandPaletteOpen = !this.commandPaletteOpen
+    },
+    toggleLeft(): void {
+      this.leftCollapsed = !this.leftCollapsed
+    },
+    toggleRight(): void {
+      this.rightCollapsed = !this.rightCollapsed
+    },
+    autoCollapseLeftForDiff(): void {
+      if (this.leftCollapsedBeforeDiff !== null) return
+      this.leftCollapsedBeforeDiff = this.leftCollapsed
+      if (!this.leftCollapsed) {
+        this.leftCollapsed = true
+        this.suppressPaneAnimation = true
+      }
+    },
+    restoreLeftAfterDiff(): void {
+      if (this.leftCollapsedBeforeDiff === null) return
+      const wasExpanded = !this.leftCollapsedBeforeDiff
+      this.leftCollapsedBeforeDiff = null
+      if (wasExpanded) {
+        this.leftCollapsed = false
+        this.suppressPaneAnimation = true
+      }
+    },
+    toggleSection(key: string): void {
+      this.sections = { ...this.sections, [key]: !this.isSectionOpen(key) }
+    },
+    isSectionOpen(key: string): boolean {
+      if (key in this.sections) return this.sections[key]!
+      if (key in DEFAULT_SECTIONS) return DEFAULT_SECTIONS[key as SectionKey]
+      return true
+    },
+    isSectionVisible(key: string): boolean {
+      if (key in this.visibleSections) return this.visibleSections[key]!
+      if (key in DEFAULT_VISIBLE_SECTIONS)
+        return DEFAULT_VISIBLE_SECTIONS[key as SectionKey]
+      return true
+    },
+    toggleSectionVisible(key: string): void {
+      this.visibleSections = {
+        ...this.visibleSections,
+        [key]: !this.isSectionVisible(key),
+      }
+    },
+    setSectionVisible(key: string, visible: boolean): void {
+      this.visibleSections = { ...this.visibleSections, [key]: visible }
+    },
+    isColumnVisible(key: CommitColumnKey): boolean {
+      return this.columns[key] ?? DEFAULT_COLUMNS[key]
+    },
+    toggleColumn(key: CommitColumnKey): void {
+      this.columns[key] = !this.isColumnVisible(key)
+    },
+    setColumnVisible(key: CommitColumnKey, visible: boolean): void {
+      this.columns[key] = visible
+    },
+    setColumnWidth(key: CommitColumnWidthKey, width: number): void {
+      this.columnWidths[key] = clampColumnWidth(key, width)
+    },
+    setColumnOrder(order: CommitColumnWidthKey[]): void {
+      this.columnOrder = sanitizeColumnOrder(order)
+    },
+    /** Move a column to the left/right edge of a target column. */
+    moveColumn(
+      key: CommitColumnWidthKey,
+      targetKey: CommitColumnWidthKey,
+      side: CommitColumnDropSide,
+    ): void {
+      if (key === targetKey) return
+      const order = [...this.columnOrder]
+      const from = order.indexOf(key)
+      if (from < 0) return
+      order.splice(from, 1)
+      const to = order.indexOf(targetKey)
+      if (to < 0) return
+      order.splice(side === 'right' ? to + 1 : to, 0, key)
+      this.columnOrder = sanitizeColumnOrder(order)
+    },
+    resetColumnWidths(): void {
+      this.columnWidths = { ...DEFAULT_COLUMN_WIDTHS }
+    },
+    setSectionOpen(key: string, open: boolean): void {
+      this.sections = { ...this.sections, [key]: open }
+    },
+    sectionState(key: string): SidebarSectionState {
+      if (!this.isSectionVisible(key)) return 'hidden'
+      return this.isSectionOpen(key) ? 'expanded' : 'collapsed'
+    },
+    setSectionState(key: string, state: SidebarSectionState): void {
+      if (state === 'hidden') {
+        this.setSectionVisible(key, false)
+        return
+      }
+      this.setSectionVisible(key, true)
+      this.setSectionOpen(key, state === 'expanded')
+    },
+    setLeftVisible(visible: boolean): void {
+      this.leftCollapsed = !visible
+    },
+    setRightVisible(visible: boolean): void {
+      this.rightCollapsed = !visible
+    },
+    setGraphScopeAll(value: boolean): void {
+      this.graphScopeAll = value
+    },
+    setCommitGraphLimit(value: number): void {
+      this.commitGraphLimit = clampCommitGraphLimit(value)
+    },
+    openSettings(): void {
+      this.settingsOpen = true
+    },
+    closeSettings(): void {
+      this.settingsOpen = false
+    },
+    setLastRepositoryPath(path: string | null): void {
+      this.lastRepositoryPath = path
+    },
+    setOpenRepoTabs(tabs: RepoTabPref[], activePath: string | null): void {
+      this.openRepoTabs = tabs.map((tab) => ({ ...tab }))
+      this.lastRepositoryPath = activePath
+    },
+    setDiffViewMode(mode: DiffViewMode): void {
+      this.diffViewMode = mode
+    },
+    setIgnoreWhitespace(value: boolean): void {
+      this.ignoreWhitespace = value
+    },
+    setBlameWordWrap(value: boolean): void {
+      this.blameWordWrap = value
+    },
+    setDiffWordWrap(value: boolean): void {
+      this.diffWordWrap = value
+    },
+    setSignOffCommit(value: boolean): void {
+      this.signOffCommit = value
+    },
+    setSignCommit(value: boolean): void {
+      this.signCommit = value
+    },
+    setAutoFetchIntervalSec(value: number): void {
+      this.autoFetchIntervalSec = clampAutoFetchIntervalSec(value)
+    },
+    setFileListView(view: FileListView): void {
+      this.fileListView = view
+    },
+    setTheme(theme: ThemePreference): void {
+      this.theme = theme
+      syncThemePreference(theme)
+    },
+    setUiMode(mode: UiMode): void {
+      this.uiMode = mode
+    },
+    resetLayout(): void {
+      const d = defaultPreferences()
+      this.leftSize = d.leftSize
+      this.rightSize = d.rightSize
+      this.workingTreeChangesSize = d.workingTreeChangesSize
+      this.leftCollapsed = d.leftCollapsed
+      this.rightCollapsed = d.rightCollapsed
+    },
+    setBinding(command: CommandId, binding: KeyBinding | null): void {
+      this.keybindings = { ...this.keybindings, [command]: binding ? [{ ...binding }] : [] }
+    },
+    clearBinding(command: CommandId): void {
+      this.keybindings = { ...this.keybindings, [command]: [] }
+    },
+    resetBinding(command: CommandId): void {
+      const defaults = defaultKeymap()
+      this.keybindings = { ...this.keybindings, [command]: defaults[command].map((x) => ({ ...x })) }
+    },
+    resetAllKeybindings(): void {
+      this.keybindings = defaultKeymap()
+    },
+  },
+})

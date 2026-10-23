@@ -1,0 +1,104 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useAvatarImage } from '@/composables/useAvatarImage'
+import { resolveTheme } from '@/lib/themes'
+import { useUiStore } from '@/stores/ui'
+import type { Author } from '@/types/git'
+
+const props = withDefaults(
+  defineProps<{
+    author: Author
+    size?: number
+    ringColor?: string
+    merge?: boolean
+  }>(),
+  { size: 20, merge: false },
+)
+
+const ui = useUiStore()
+
+const { resolvedUrl, onImageError } = useAvatarImage(
+  () => props.author.email,
+  () => props.author.avatarUrl,
+  () => props.size,
+)
+
+const showImage = computed(() => !props.merge && Boolean(resolvedUrl.value))
+
+const isLightTheme = computed(() => resolveTheme(ui.theme) === 'light')
+
+function contrastingTextColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.62 ? '#1f2328' : '#ffffff'
+}
+
+const mergePointSize = computed(() => Math.max(6, Math.round(props.size * 0.5)))
+
+const mergeStyle = computed(() => ({
+  width: `${mergePointSize.value}px`,
+  height: `${mergePointSize.value}px`,
+  backgroundColor: props.ringColor ?? props.author.color,
+}))
+
+const style = computed(() => {
+  if (showImage.value) {
+    return {
+      width: `${props.size}px`,
+      height: `${props.size}px`,
+      backgroundColor: 'transparent',
+      fontSize: `${Math.round(props.size * 0.42)}px`,
+      boxShadow: props.ringColor ? `0 0 0 2px ${props.ringColor}` : undefined,
+    }
+  }
+
+  if (isLightTheme.value) {
+    return {
+      width: `${props.size}px`,
+      height: `${props.size}px`,
+      backgroundColor: props.author.color,
+      color: contrastingTextColor(props.author.color),
+      fontSize: `${Math.round(props.size * 0.42)}px`,
+      boxShadow: props.ringColor ? `0 0 0 2px ${props.ringColor}` : undefined,
+    }
+  }
+
+  return {
+    width: `${props.size}px`,
+    height: `${props.size}px`,
+    backgroundColor: props.ringColor
+      ? `color-mix(in srgb, ${props.author.color} 30%, var(--color-app))`
+      : `color-mix(in srgb, ${props.author.color} 30%, transparent)`,
+    color: props.author.color,
+    fontSize: `${Math.round(props.size * 0.42)}px`,
+    boxShadow: props.ringColor ? `0 0 0 2px ${props.ringColor}` : undefined,
+  }
+})
+</script>
+
+<template>
+  <span
+    v-if="merge"
+    class="inline-block shrink-0 rounded-full"
+    :style="mergeStyle"
+    :title="author.name"
+  />
+  <span
+    v-else
+    class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold ring-1 ring-inset ring-[var(--color-border-strong)]"
+    :style="style"
+    :title="author.name"
+  >
+    <img
+      v-if="showImage"
+      :src="resolvedUrl!"
+      :alt="author.name"
+      class="h-full w-full object-cover"
+      loading="lazy"
+      @error="onImageError"
+    />
+    <template v-else>{{ author.initials }}</template>
+  </span>
+</template>

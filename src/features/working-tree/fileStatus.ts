@@ -1,0 +1,68 @@
+import type { Component } from 'vue'
+import { Minus, Pencil, Plus } from '@lucide/vue'
+import type { FileStatus } from '@/types/git'
+
+interface StatusMeta {
+  letter: string
+  icon?: Component
+  label: string
+  color: string
+  bg: string
+}
+
+export const STATUS_META: Record<FileStatus, StatusMeta> = {
+  modified: {
+    letter: 'M',
+    icon: Pencil,
+    label: 'Modified',
+    color: 'var(--color-warning)',
+    bg: 'color-mix(in srgb, var(--color-warning) 18%, transparent)',
+  },
+  added: {
+    letter: 'A',
+    icon: Plus,
+    label: 'Added',
+    color: 'var(--color-success)',
+    bg: 'color-mix(in srgb, var(--color-success) 18%, transparent)',
+  },
+  deleted: {
+    letter: 'D',
+    icon: Minus,
+    label: 'Deleted',
+    color: 'var(--color-danger)',
+    bg: 'color-mix(in srgb, var(--color-danger) 18%, transparent)',
+  },
+  renamed: {
+    letter: 'R',
+    label: 'Renamed',
+    color: 'var(--color-info)',
+    bg: 'color-mix(in srgb, var(--color-info) 18%, transparent)',
+  },
+  conflicted: {
+    letter: '!',
+    label: 'Conflicted',
+    color: 'var(--color-danger)',
+    bg: 'color-mix(in srgb, var(--color-danger) 24%, transparent)',
+  },
+  copied: {
+    letter: 'C',
+    label: 'Copied',
+    color: 'var(--color-info)',
+    bg: 'color-mix(in srgb, var(--color-info) 18%, transparent)',
+  },
+  untracked: {
+    letter: 'A',
+    icon: Plus,
+    label: 'Added',
+    color: 'var(--color-success)',
+    bg: 'color-mix(in srgb, var(--color-success) 18%, transparent)',
+  },
+  ignored: {
+    letter: 'I',
+    label: 'Ignored',
+    color: 'var(--color-fg-subtle)',
+    bg: 'transparent',
+  },
+}
+
+export const STATUS_ORDER: FileStatus[] = ['modified', 'added', 'untracked', 'deleted', 'renamed', 'conflicted']

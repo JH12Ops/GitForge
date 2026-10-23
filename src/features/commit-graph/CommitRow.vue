@@ -1,0 +1,498 @@
+<script setup lang="ts">
+import { computed, useTemplateRef } from 'vue'
+import {
+  Check,
+  Cherry,
+  Copy,
+  ExternalLink,
+  GitBranch,
+  GitMerge,
+  ListTree,
+  RotateCcw,
+  Spline,
+  Tag as TagIcon,
+  Undo2,
+} from '@lucide/vue'
+import Badge from '@/components/ui/Badge.vue'
+import ContextMenu from '@/components/ui/ContextMenu.vue'
+import RefChip from './RefChip.vue'
+import BranchRefChip from './BranchRefChip.vue'
+import BranchNameChipInput from './BranchNameChipInput.vue'
+import { useBranchInputFocus } from './composables/useBranchInputFocus'
+import type { MenuItem } from '@/components/ui/menu'
+import { whenTimestamp } from '@/lib/format'
+import { openExternalUrl } from '@/lib/shell/appBridge'
+import { isHeadSymbolicRef } from '@/lib/git/headRef'
+import { formatRefLabel } from '@shared/git/refLabel'
+import { githubCommitUrl } from '@shared/git/githubUrl'
+import type { Commit, Ref } from '@/types/git'
+import type { GraphNode } from '@/lib/graph/computeGraphLayout'
+import { findLaneBranchPreview } from '@/lib/graph/commitLaneBranchPreview'
+import { useRepositoryStore } from '@/stores/repository'
+import { useInteractiveRebaseStore } from '@/stores/interactiveRebase'
+import { useSelectionStore, PENDING_BRANCH_ROW } from '@/stores/selection'
+import { useToastStore } from '@/stores/toast'
+import { useUiStore } from '@/stores/ui'
+import { storeToRefs } from 'pinia'
+import { refsToGraphGap, ROW_LEFT_PADDING } from './composables/useCommitGraphColumns'
+
+const props = defineProps<{
+  commit: Commit
+  commitIndex: number
+  graphNode: GraphNode | null
+  graphWidth: number
+  nodeX: number
+  nodeSize: number
+  rowHeight: number
+  selected: boolean
+}>()
+
+const repo = useRepositoryStore()
+const selection = useSelectionStore()
+const interactiveRebase = useInteractiveRebaseStore()
+const toast = useToastStore()
+const ui = useUiStore()
+const { columnWidths, orderedColumnOrder } = storeToRefs(ui)
+/** Columns dragged between refs and graph widen the chip→node connectors. */
+const refGraphGap = computed(() => refsToGraphGap())
+const { hoveredSha, branchCreation } = storeToRefs(selection)
+
+function refDisplayLabel(ref: Ref): string {
+  return ref.label || formatRefLabel(ref.name, ref.type)
+}
+
+function refPriority(ref: Ref): number {
+  if (ref.isHead) return 0
+  if (ref.type === 'localBranch') return 1
+  if (ref.type === 'remoteBranch') return 2
+  return 3
+}
+
+interface DisplayRef {
+  ref: Ref
+  hasLocal: boolean
+  hasRemote: boolean
+}
+
+function branchPresence(refs: Ref[]): { hasLocal: boolean; hasRemote: boolean } {
+  return {
+    hasLocal: refs.some((r) => r.type === 'localBranch'),
+    hasRemote: refs.some((r) => r.type === 'remoteBranch'),
+  }
+}
+
+const isStashCommit = computed(
+  () =>
+    props.commit.refs.some((r) => r.type === 'stash') ||
+    /^(WIP on|On) /.test(props.commit.subject ?? ''),
+)
+
+const displayRefs = computed((): DisplayRef[] => {
+  const byLabel = new Map<string, Ref>()
+  const refsByLabel = new Map<string, Ref[]>()
+  for (const ref of props.commit.refs) {
+    if (ref.type === 'stash' || isHeadSymbolicRef(ref)) continue
+    const label = refDisplayLabel(ref)
+    const group = refsByLabel.get(label) ?? []
+    group.push(ref)
+    refsByLabel.set(label, group)
+    const existing = byLabel.get(label)
+    if (!existing || refPriority(ref) < refPriority(existing)) {
+      byLabel.set(label, ref)
+    }
+  }
+  return [...byLabel.entries()]
+    .map(([label, ref]) => ({
+      ref,
+      ...branchPresence(refsByLabel.get(label) ?? []),
+    }))
+    .sort((a, b) => {
+      const byPriority = refPriority(a.ref) - refPriority(b.ref)
+      if (byPriority !== 0) return byPriority
+      return refDisplayLabel(a.ref).localeCompare(refDisplayLabel(b.ref))
+    })
+})
+
+const primaryRef = computed(() => displayRefs.value[0] ?? null)
+const hiddenRefs = computed(() => displayRefs.value.slice(1))
+const hiddenCount = computed(() => hiddenRefs.value.length)
+
+const hasBranchRef = computed(() =>
+  props.commit.refs.some((r) => r.type === 'localBranch' || r.type === 'remoteBranch'),
+)
+
+const isHovered = computed(() => hoveredSha.value === props.commit.sha)
+
+const commitIndex = computed(() => props.commitIndex)
+
+const isCreatingBranchHere = computed(() => {
+  const creation = branchCreation.value
+  if (!creation || creation.display === PENDING_BRANCH_ROW) return false
+  return creation.display === props.commit.sha
+})
+
+const previewBranch = computed(() => {
+  if (isCreatingBranchHere.value) return null
+  if (!isHovered.value || hasBranchRef.value) return null
+  const index = commitIndex.value
+  if (index < 0) return null
+  return findLaneBranchPreview(index, repo.commits, repo.layout, repo.branches)
+})
+
+// The refs cell now lives inside the per-column template loop, so Vue
+// collects its template ref into an array; pick the single entry out.
+const branchInputRefs = useTemplateRef<InstanceType<typeof BranchNameChipInput>>(
+  'branchInputRef',
+)
+const branchInputRef = computed(() =>
+  Array.isArray(branchInputRefs.value) ? (branchInputRefs.value[0] ?? null) : branchInputRefs.value,
+)
+
+useBranchInputFocus(isCreatingBranchHere, branchInputRef)
+
+const chipColor = computed(() => props.graphNode?.color ?? 'var(--color-fg-muted)')
+
+/**
+ * Author info always lives in the graph column: the name folds into its
+ * right edge (the avatar renders on the node in the overlay above).
+ */
+const showInlineAuthor = computed(() => ui.isColumnVisible('author'))
+
+const REFS_RIGHT_PADDING = 8
+
+/**
+ * Rows carrying a branch chip get a soft lane-colored tint instead of the old
+ * chip→node connector line, which struck through any column dragged between
+ * the refs column and the graph lane.
+ */
+const rowTint = computed((): Record<string, string> | null => {
+  if (props.graphNode == null || isCreatingBranchHere.value) return null
+  if (!hasBranchRef.value) return null
+  return { backgroundColor: props.graphNode.color }
+})
+
+const showPreviewConnector = computed(
+  () => props.graphNode != null && (previewBranch.value != null || isCreatingBranchHere.value),
+)
+
+const previewConnectorStyle = computed((): Record<string, string> | null => {
+  if (!showPreviewConnector.value || !props.graphNode) return null
+  const toNode =
+    REFS_RIGHT_PADDING +
+    refGraphGap.value +
+    props.nodeX -
+    props.nodeSize / 2 -
+    ROW_LEFT_PADDING
+  const width = Math.max(
+    0,
+    Math.min(
+      toNode,
+      props.graphWidth + REFS_RIGHT_PADDING + refGraphGap.value - ROW_LEFT_PADDING,
+    ),
+  )
+  return {
+    backgroundColor: props.graphNode.color,
+    width: `${width}px`,
+  }
+})
+
+const previewConnectorOverlayStyle = computed((): Record<string, string> | null => {
+  if (!previewConnectorStyle.value) return null
+  return {
+    ...previewConnectorStyle.value,
+    width: `calc(100% + ${previewConnectorStyle.value.width})`,
+  }
+})
+
+const nodeToBarConnectorStyle = computed((): Record<string, string> | null => {
+  if (!props.graphNode) return null
+  // Extend left to the node's left edge so the band passes fully behind the
+  // avatar and hugs the circle. The avatar renders above in the overlay.
+  const leftEdge = props.nodeX - props.nodeSize / 2
+  const width = Math.max(0, props.graphWidth - leftEdge)
+  return {
+    backgroundColor: props.graphNode.color,
+    left: `${leftEdge}px`,
+    width: `${width}px`,
+  }
+})
+
+  const menu = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = [
+    { label: 'Checkout Commit', icon: Check, onSelect: () => act('checkout-commit') },
+    { label: 'Create Branch Here', icon: GitBranch, onSelect: () => beginBranchHere() },
+  ]
+
+  if (ui.isAdvanced) {
+    items.push({ label: 'Tag Commit', icon: TagIcon, onSelect: () => repo.createTagAt(props.commit.sha) })
+  }
+
+  items.push({ separator: true })
+
+  if (ui.isAdvanced) {
+    items.push({ label: 'Cherry Pick', icon: Cherry, onSelect: () => act('cherry-pick') })
+    items.push({ label: 'Revert Commit', icon: Undo2, onSelect: () => act('revert') })
+  }
+
+  items.push({
+    label: 'Merge into Current',
+    icon: GitMerge,
+    children: [
+      { label: 'Merge', onSelect: () => act('merge') },
+      { label: 'Squash merge', shortcut: '--squash', onSelect: () => mergeSquash() },
+    ],
+  })
+
+  if (ui.isAdvanced) {
+    items.push(
+      { label: 'Rebase From Here', icon: Spline, onSelect: () => act('rebase-from-here') },
+      {
+        label: 'Interactive Rebase From Here',
+        icon: ListTree,
+        onSelect: () => interactiveRebase.open(props.commit.sha),
+      },
+    )
+  }
+
+  items.push(
+    {
+      label: 'Reset Current Branch to Here',
+      icon: RotateCcw,
+      children: [
+        { label: 'Soft', shortcut: '--soft', onSelect: () => act('reset-soft') },
+        { label: 'Mixed', shortcut: '--mixed', onSelect: () => act('reset-mixed') },
+        { label: 'Hard', shortcut: '--hard', danger: true, onSelect: () => act('reset-hard') },
+      ],
+    },
+    { separator: true },
+    { label: 'Copy SHA', icon: Copy, shortcut: '⌘C', onSelect: copySha },
+    { label: 'Open on GitHub', icon: ExternalLink, onSelect: openOnGithub },
+  )
+
+  return items
+})
+
+function beginBranchHere(): void {
+  void repo.beginCreateBranch({ startPoint: props.commit.sha, sha: props.commit.sha })
+}
+
+function onBranchNameSubmit(name: string): void {
+  void repo.submitBranchCreation(name)
+}
+
+function onBranchNameCancel(): void {
+  selection.cancelBranchCreation()
+}
+
+function act(kind: Parameters<typeof repo.runAction>[0]['kind']): void {
+  void repo.runAction({ kind, target: props.commit.sha })
+}
+
+function checkoutPrimaryBranch(): void {
+  if (selection.branchCreation) return
+  const entry = primaryRef.value
+  if (!entry) return
+  if (entry.ref.type !== 'localBranch' && entry.ref.type !== 'remoteBranch') return
+  const label = refDisplayLabel(entry.ref)
+  const branch = repo.branches.find((b) => b.name === label)
+  if (branch) {
+    if (branch.kind === 'remote') repo.checkoutRemoteBranch(branch)
+    else repo.checkoutBranch(branch.name)
+    return
+  }
+  if (entry.ref.type === 'localBranch') repo.checkoutBranch(label)
+}
+
+function mergeSquash(): void {
+  void repo.runAction({ kind: 'merge', target: props.commit.sha, meta: { squash: true } })
+}
+
+function copySha(): void {
+  void navigator.clipboard?.writeText(props.commit.sha)
+  toast.push('Copied SHA to clipboard', 'info')
+}
+
+function openOnGithub(): void {
+  const remoteUrl = repo.repository?.remoteUrl ?? ''
+  const url = githubCommitUrl(remoteUrl, props.commit.sha)
+  if (!url) {
+    toast.push('No GitHub remote configured for this repository', 'error')
+    return
+  }
+  void openExternalUrl(url)
+  toast.push('Opening commit on GitHub', 'info')
+}
+</script>
+
+<template>
+  <ContextMenu :items="menu">
+    <div class="relative flex h-full items-center pr-3 pl-3 text-[13px]">
+      <!-- Soft lane-colored highlight for rows carrying a branch chip. -->
+      <div
+        v-if="rowTint"
+        class="pointer-events-none absolute inset-0 opacity-8"
+        :style="rowTint"
+        aria-hidden="true"
+      />
+      <!-- Every column in the user's saved order, including the pinned
+           refs/graph pair, so header and body stay aligned through drags. -->
+      <template v-for="key in orderedColumnOrder" :key="key">
+        <!-- Refs column: chips (the branch row itself carries the highlight
+             tint, so no connector crosses columns between refs and graph). -->
+        <div
+          v-if="key === 'refs'"
+          class="group/refs relative z-20 flex min-w-0 items-center gap-1 px-2"
+          :style="{ width: `${columnWidths.refs}px` }"
+        >
+          <RefChip
+            v-if="primaryRef && !hasBranchRef && !isCreatingBranchHere"
+            class="shrink-0 overflow-hidden"
+            :ref-data="primaryRef.ref"
+            :color="chipColor"
+            :has-local="primaryRef.hasLocal"
+            :has-remote="primaryRef.hasRemote"
+          />
+          <div v-if="isCreatingBranchHere" class="relative min-w-0 flex-1">
+            <BranchNameChipInput
+              ref="branchInputRef"
+              class="min-w-0 overflow-hidden"
+              :color="chipColor"
+              @submit="onBranchNameSubmit"
+              @cancel="onBranchNameCancel"
+            />
+            <div
+              v-if="previewConnectorStyle"
+              class="pointer-events-none absolute top-1/2 z-10 h-[2px] -translate-y-1/2 opacity-90"
+              :style="{ left: '100%', ...previewConnectorStyle }"
+            />
+          </div>
+          <div v-else-if="previewBranch" class="relative flex min-w-0 flex-1 items-center">
+            <div class="w-fit min-w-0 max-w-full shrink">
+              <BranchRefChip
+                :ref-data="previewBranch.ref"
+                :color="chipColor"
+                :has-local="previewBranch.hasLocal"
+                :has-remote="previewBranch.hasRemote"
+                muted
+              />
+            </div>
+            <div class="relative h-[2px] min-w-0 flex-1">
+              <div
+                v-if="previewConnectorOverlayStyle"
+                class="pointer-events-none absolute top-1/2 left-0 z-10 h-[2px] -translate-y-1/2 opacity-25"
+                :style="previewConnectorOverlayStyle"
+              />
+            </div>
+          </div>
+          <template v-if="hasBranchRef && primaryRef && !isCreatingBranchHere">
+            <div
+              class="relative flex min-w-0 flex-1 items-center gap-1"
+              @dblclick.stop="checkoutPrimaryBranch()"
+            >
+              <div class="w-fit min-w-0 max-w-full shrink">
+                <BranchRefChip
+                  :ref-data="primaryRef.ref"
+                  :color="chipColor"
+                  :has-local="primaryRef.hasLocal"
+                  :has-remote="primaryRef.hasRemote"
+                />
+              </div>
+              <div class="group/extra contents">
+                <span
+                  v-if="hiddenCount"
+                  class="flex h-[22px] min-w-[22px] shrink-0 cursor-default items-center justify-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-panel-raised)] px-1 text-[11px] font-semibold text-[var(--color-fg-muted)] transition-opacity group-hover/extra:opacity-0"
+                  :title="`+${hiddenCount} more`"
+                >
+                  +{{ hiddenCount }}
+                </span>
+                <div
+                  v-if="hiddenCount"
+                  class="absolute top-full left-0 z-50 mt-1 hidden min-w-max flex-col items-start gap-1 group-hover/extra:flex"
+                >
+                  <BranchRefChip
+                    v-for="(entry, i) in hiddenRefs"
+                    :key="i"
+                    :ref-data="entry.ref"
+                    :color="chipColor"
+                    :has-local="entry.hasLocal"
+                    :has-remote="entry.hasRemote"
+                  />
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Graph lane: transparent; nodes/edges render in the overlay above.
+             The right edge doubles as the author name position. -->
+        <div
+          v-else-if="key === 'graph'"
+          class="relative z-0 flex shrink-0 items-center"
+          :style="{ width: `${graphWidth}px`, height: `${rowHeight}px` }"
+        >
+          <div
+            v-if="nodeToBarConnectorStyle"
+            aria-hidden="true"
+            class="pointer-events-none absolute top-1.5 bottom-1.5"
+            :class="selected ? 'opacity-30' : 'opacity-8'"
+            :style="nodeToBarConnectorStyle"
+          />
+          <div
+            v-if="showInlineAuthor"
+            class="relative z-20 ml-auto flex min-w-0 items-center justify-end pr-2"
+          >
+            <span
+              class="min-w-0 truncate text-[11px] text-[var(--color-fg-muted)]"
+              :title="commit.author.name"
+            >
+              {{ commit.author.name }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Data columns: commit / sha / when. -->
+        <div
+          v-else-if="key === 'commit'"
+          class="relative flex h-full shrink-0 items-center gap-2 px-2"
+          :style="{ width: `${columnWidths.commit}px` }"
+        >
+          <div
+            class="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full"
+            :style="{ backgroundColor: chipColor }"
+          />
+          <Cherry
+            v-if="commit.isCherryPick"
+            :size="13"
+            class="shrink-0 text-[var(--color-lane-4)]"
+          />
+          <span
+            class="truncate"
+            :class="
+              selected
+                ? 'font-medium text-[var(--color-fg)]'
+                : 'text-[var(--color-fg)]/90'
+            "
+          >
+            {{ commit.subject }}
+          </span>
+          <Badge v-if="commit.isMerge && !isStashCommit" tone="info">merge</Badge>
+        </div>
+
+        <span
+          v-else-if="key === 'sha'"
+          class="relative shrink-0 truncate px-2 font-mono text-[11px] text-[var(--color-fg-subtle)]"
+          :style="{ width: `${columnWidths.sha}px` }"
+        >
+          {{ commit.shortSha }}
+        </span>
+        <span
+          v-else-if="key === 'when'"
+          class="relative shrink-0 truncate px-2 text-right text-[11px] text-[var(--color-fg-subtle)]"
+          :style="{ width: `${columnWidths.when}px` }"
+        >
+          {{ whenTimestamp(commit.date) }}
+        </span>
+      </template>
+    </div>
+  </ContextMenu>
+</template>

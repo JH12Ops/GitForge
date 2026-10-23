@@ -1,0 +1,65 @@
+{
+  "name": "gitforge",
+  "version": "1.0.2",
+  "description": "Free, open-source desktop Git client (Go + Wails 3, Vue 3, TypeScript) \u2014 graph-first alternative to GitKraken with commit graph, branches, staging and real local Git operations.",
+  "author": "GitForge <justinh_12@protonmail.com>",
+  "license": "MIT",
+  "productName": "gitforge",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gitforge/gitforge.git"
+  },
+  "main": "index.html",
+  "engines": {
+    "node": ">=20"
+  },
+  "resolutions": {
+    "vite": "^7.3.6"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:mock": "vite --port 1420",
+    "check": "npm run typecheck && npm run test && npm run sync-version -- --check && npm run go:test",
+    "build": "vite build",
+    "site": "python3 -m http.server 4173 --directory docs",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json --composite false",
+    "sync-version": "node scripts/sync-version.mjs",
+    "package:dmg": "sh scripts/package-dmg.sh",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev:go": "vite build && cd go-backend && GOTOOLCHAIN=go1.26.0 CGO_CFLAGS='-O2 -g -mmacosx-version-min=11.0' CGO_LDFLAGS='-mmacosx-version-min=11.0' go build -o GitForge.app/Contents/MacOS/GitForge . && mkdir -p GitForge.app/Contents/Resources && cp appicon.icns GitForge.app/Contents/Resources/GitForge.icns && codesign --force --sign - GitForge.app && open GitForge.app",
+    "dev:go:watch": "node scripts/devgo.mjs",
+    "go:build": "cd go-backend && GOTOOLCHAIN=go1.26.0 CGO_CFLAGS='-O2 -g -mmacosx-version-min=11.0' CGO_LDFLAGS='-mmacosx-version-min=11.0' go build -o GitForge.app/Contents/MacOS/GitForge . && mkdir -p GitForge.app/Contents/Resources && cp appicon.icns GitForge.app/Contents/Resources/GitForge.icns && codesign --force --sign - GitForge.app",
+    "go:test": "cd go-backend && GOTOOLCHAIN=go1.26.0 CGO_CFLAGS='-O2 -g -mmacosx-version-min=11.0' CGO_LDFLAGS='-mmacosx-version-min=11.0' go test ./...",
+    "go:vet": "cd go-backend && GOTOOLCHAIN=go1.26.0 CGO_CFLAGS='-O2 -g -mmacosx-version-min=11.0' go vet ./...",
+    "restyle": "jhstyle go-backend",
+    "restyle:check": "jhstyle -check go-backend",
+    "restyle:install": "cd ../jhstyle && go install ."
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.6.0",
+    "@lucide/vue": "^1.58.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/vue-virtual": "^3.13.47",
+    "@types/node": "^26.6.5",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "highlight.js": "^11.12.0",
+    "motion-v": "^2.8.0",
+    "pinia": "^3.0.4",
+    "reka-ui": "^2.11.0",
+    "splitpanes": "^4.1.2",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.7",
+    "vitest": "^4.1.9",
+    "vue": "^3.5.44",
+    "vue-tsc": "^3.3.13"
+  },
+  "dependencies": {
+    "file-icons-js": "^1.1.0"
+  }
+}

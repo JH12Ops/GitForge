@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Stack: Wails 3 (Go) + Vue 3 + TypeScript. package.json is the version source of truth.
+  "formatter": true,
+  "plugins": ["@upstash/context7-opencode"],
+  "watcher": {
+    "ignore": ["dist/**", "go-backend/GitForge.app/**", "node_modules/**", "coverage/**"]
+  },
+  "permissions": [
+    { "action": "shell", "resource": "npm run *", "effect": "allow" },
+    { "action": "shell", "resource": "go build *", "effect": "allow" },
+    { "action": "shell", "resource": "go test *", "effect": "allow" },
+    { "action": "shell", "resource": "go vet *", "effect": "allow" },
+    { "action": "shell", "resource": "gofmt *", "effect": "allow" }
+  ],
+  "instructions": ["AGENTS.md"]
+}

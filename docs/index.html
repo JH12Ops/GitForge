@@ -1,0 +1,1531 @@
+<!doctype html>
+<html lang="en">
+  <!--
+    NOTE: outbound URLs (github.com/gitforge/gitforge, gitforge.github.io/gitforge)
+    are placeholders — point them at the real GitForge repo/site once origin exists.
+  -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="GitForge is a free, open-source desktop Git client for macOS, Windows, and Linux with a commit graph, branch sidebar, working tree, interactive rebase, and real local Git operations. Lightweight alternative to GitKraken and Sourcetree."
+    />
+    <meta
+      name="keywords"
+      content="Git client, desktop Git GUI, commit graph, Git history viewer, Go Git app, open source Git client, macOS Git client, GitKraken alternative, Sourcetree alternative, interactive rebase, branch manager"
+    />
+    <meta name="author" content="gitforge" />
+    <meta name="application-name" content="GitForge" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#0d0f14" />
+    <link rel="canonical" href="https://gitforge.github.io/gitforge/" />
+    <title>GitForge — Free open-source desktop Git client</title>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GitForge" />
+    <meta property="og:title" content="GitForge — Free open-source desktop Git client" />
+    <meta
+      property="og:description"
+      content="A lighter way to see your Git history. Commit graph, branch sidebar, working tree, and real local Git operations — built with Wails 3 (Go), Vue 3, and TypeScript."
+    />
+    <meta property="og:url" content="https://gitforge.github.io/gitforge/" />
+    <meta property="og:image" content="https://gitforge.github.io/gitforge/screenshot.png" />
+    <meta property="og:image:width" content="1440" />
+    <meta property="og:image:height" content="900" />
+    <meta property="og:image:alt" content="GitForge showing the AwesomeShop repository with repo tabs, commit graph, branch sidebar, and working tree" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GitForge — Free open-source desktop Git client" />
+    <meta
+      name="twitter:description"
+      content="Commit graph, branch sidebar, working tree, and real local Git operations. Open source and free."
+    />
+    <meta name="twitter:image" content="https://gitforge.github.io/gitforge/screenshot.png" />
+    <meta name="twitter:image:alt" content="GitForge showing the AwesomeShop repository with repo tabs, commit graph, branch sidebar, and working tree" />
+
+    <link rel="icon" href="icon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="icon.png" />
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="sitemap.xml" />
+    <link rel="alternate" type="text/plain" href="llms.txt" title="LLM-readable site index" />
+    <link rel="alternate" type="text/plain" href="llms-full.txt" title="LLM-readable full site content" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --app: #0d0f14;
+        --panel: #161b22;
+        --panel-raised: #1c2128;
+        --elevated: #21262d;
+        --border: rgba(255, 255, 255, 0.06);
+        --border-strong: rgba(255, 255, 255, 0.12);
+        --fg: #e6edf3;
+        --fg-muted: #9198a1;
+        --fg-subtle: #6b7280;
+        --accent: #6e9fff;
+        --accent-strong: #4a82ff;
+        --accent-soft: rgba(110, 159, 255, 0.16);
+        --success: #3fb950;
+        --lane-0: #a371f7;
+        --lane-1: #3fb950;
+        --lane-2: #58a6ff;
+        --lane-3: #f0883e;
+        --radius: 0.5rem;
+        --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-sans);
+        background:
+          radial-gradient(1200px 500px at 50% -8rem, rgba(110, 159, 255, 0.09), transparent 60%),
+          var(--app);
+        color: var(--fg);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      ::selection {
+        background: rgba(110, 159, 255, 0.35);
+        color: #fff;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: var(--app);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: var(--elevated);
+        border-radius: 8px;
+        border: 2px solid var(--app);
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--border-strong);
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      a:hover {
+        color: var(--accent-strong);
+        text-decoration: underline;
+      }
+
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
+
+      /* Header */
+      header {
+        border-bottom: 1px solid var(--border);
+        background: rgba(13, 15, 20, 0.85);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 3.5rem;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--fg);
+        text-decoration: none;
+      }
+
+      .logo:hover {
+        text-decoration: none;
+        color: var(--fg);
+      }
+
+      .logo-mark {
+        width: 1.75rem;
+        height: 1.75rem;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+
+      nav a {
+        color: var(--fg-muted);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--fg);
+        text-decoration: none;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.625rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        border: 1px solid transparent;
+        text-decoration: none;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      }
+
+      .btn:hover {
+        text-decoration: none;
+      }
+
+      .btn-primary {
+        background: linear-gradient(180deg, #82adff, var(--accent) 60%, var(--accent-strong));
+        color: #0d0f14;
+        box-shadow: 0 8px 24px rgba(110, 159, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      }
+
+      .btn-primary:hover {
+        background: linear-gradient(180deg, #93b8ff, var(--accent) 60%, var(--accent-strong));
+        color: #0d0f14;
+        transform: translateY(-1px);
+        box-shadow: 0 12px 32px rgba(110, 159, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--fg-muted);
+        border-color: var(--border-strong);
+      }
+
+      .btn-ghost:hover {
+        background: var(--elevated);
+        color: var(--fg);
+        transform: translateY(-1px);
+      }
+
+      .btn svg {
+        flex-shrink: 0;
+      }
+
+      /* Hero */
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 6rem 0 4.5rem;
+        text-align: center;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(560px 280px at 18% 4%, rgba(163, 113, 247, 0.14), transparent 60%),
+          radial-gradient(680px 300px at 82% 8%, rgba(110, 159, 255, 0.16), transparent 60%),
+          radial-gradient(420px 220px at 50% 42%, rgba(63, 185, 80, 0.06), transparent 65%);
+        pointer-events: none;
+      }
+
+      .hero .wrap {
+        position: relative;
+      }
+
+      h1 {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.035em;
+        margin: 0 0 1rem;
+        text-wrap: balance;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        border: 1px solid rgba(110, 159, 255, 0.3);
+        box-shadow: 0 0 24px rgba(110, 159, 255, 0.15);
+        color: var(--accent);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        margin-bottom: 1.5rem;
+      }
+
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--success);
+      }
+
+      h1 span {
+        background: linear-gradient(135deg, #9dbcff 0%, var(--accent) 35%, var(--lane-0) 70%, var(--lane-2) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        filter: drop-shadow(0 0 24px rgba(110, 159, 255, 0.35));
+      }
+
+      .hero p {
+        font-size: 1.125rem;
+        color: var(--fg-muted);
+        max-width: 36rem;
+        margin: 0 auto 2rem;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+      }
+
+      /* App screenshot */
+      .screenshot-frame {
+        margin: 3.5rem auto 0;
+        max-width: 1100px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        overflow: hidden;
+        background: var(--panel);
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.3),
+          0 32px 64px rgba(0, 0, 0, 0.5),
+          0 0 90px rgba(110, 159, 255, 0.12);
+      }
+
+      .screenshot-titleBar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1rem;
+        background: var(--panel-raised);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .traffic {
+        display: flex;
+        gap: 0.375rem;
+      }
+
+      .traffic span {
+        width: 0.625rem;
+        height: 0.625rem;
+        border-radius: 50%;
+      }
+
+      .traffic .red { background: #ff5f57; }
+      .traffic .yellow { background: #febc2e; }
+      .traffic .green { background: #28c840; }
+
+      .screenshot-title {
+        flex: 1;
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--fg-subtle);
+      }
+
+      .screenshot {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      /* Features */
+      section {
+        padding: 4rem 0;
+      }
+
+      section[id] {
+        scroll-margin-top: 4.5rem;
+      }
+
+      .eyebrow {
+        display: block;
+        text-align: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+      }
+
+      section h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.5rem;
+        text-align: center;
+      }
+
+      .section-sub {
+        text-align: center;
+        color: var(--fg-muted);
+        margin: 0 0 2.5rem;
+        font-size: 1rem;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+      }
+
+      .feature-card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%), var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--border-strong);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      }
+
+      .feature-icon {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        display: grid;
+        place-items: center;
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+      }
+
+      .feature-card h3 {
+        margin: 0 0 0.375rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+
+      .feature-card p {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--fg-muted);
+        line-height: 1.5;
+      }
+
+      /* Comparison table */
+      .compare-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--border-strong);
+        border-radius: 0.75rem;
+        background: var(--panel);
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+      }
+
+      .compare-table {
+        width: 100%;
+        min-width: 640px;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+
+      .compare-table th,
+      .compare-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+
+      .compare-table tbody tr:last-child th,
+      .compare-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .compare-table thead th {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--fg);
+        background: var(--panel-raised);
+      }
+
+      .compare-table thead th:first-child,
+      .compare-table tbody th {
+        color: var(--fg-muted);
+        font-weight: 500;
+        white-space: normal;
+        min-width: 220px;
+      }
+
+      .compare-table td {
+        color: var(--fg-muted);
+      }
+
+      .compare-table td.yes {
+        color: var(--success);
+        font-weight: 600;
+      }
+
+      .compare-note {
+        margin: 1rem 0 0;
+        font-size: 0.8125rem;
+        color: var(--fg-subtle);
+        text-align: center;
+      }
+
+      /* Tech stack */
+      .stack-carousel {
+        overflow: hidden;
+        -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+      }
+
+      .stack-track {
+        display: flex;
+        width: max-content;
+        animation: stack-scroll 38s linear infinite;
+      }
+
+      .stack-carousel:hover .stack-track,
+      .stack-carousel:focus-within .stack-track {
+        animation-play-state: paused;
+      }
+
+      .stack-group {
+        display: flex;
+        gap: 0.75rem;
+        padding-right: 0.75rem;
+      }
+
+      @keyframes stack-scroll {
+        to {
+          transform: translateX(-50%);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        .reveal {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+
+        .stack-track {
+          animation: none;
+          flex-wrap: wrap;
+          width: auto;
+          justify-content: center;
+        }
+      }
+
+      .stack-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(28, 33, 40, 0.9);
+        border: 1px solid var(--border);
+        font-size: 0.8125rem;
+        color: var(--fg-muted);
+        font-family: var(--font-mono);
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+
+      .stack-tag:hover {
+        border-color: var(--border-strong);
+        color: var(--fg);
+      }
+
+      .stack-tag img,
+      .stack-tag svg {
+        width: 1rem;
+        height: 1rem;
+        flex-shrink: 0;
+      }
+
+      .download-panel {
+        background:
+          radial-gradient(500px 200px at 50% 0%, rgba(110, 159, 255, 0.1), transparent 70%),
+          var(--panel);
+        border: 1px solid var(--border-strong);
+        border-radius: 1rem;
+        padding: 2.5rem 2rem 2rem;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+      }
+
+      .download-panel .section-sub {
+        margin-bottom: 2rem;
+      }
+
+      /* Quick install (macOS one-liner) */
+      .quick-install {
+        max-width: 640px;
+        margin: 0 auto 2rem;
+        text-align: left;
+      }
+
+      .quick-install-code {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: var(--panel-raised);
+        border: 1px solid var(--border-strong);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+      }
+
+      .quick-install-code code {
+        flex: 1;
+        min-width: 0;
+        overflow-x: auto;
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        color: var(--fg);
+        white-space: nowrap;
+        scrollbar-width: none;
+      }
+
+      .quick-install-code code::-webkit-scrollbar { display: none; }
+
+      .quick-install-code .command {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      #quick-install-copy svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+      }
+
+      .quick-install-note {
+        display: block;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--fg-subtle);
+      }
+
+      /* Install */
+      .install-box {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        overflow: hidden;
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      .install-header {
+        padding: 0.625rem 1rem;
+        background: var(--panel-raised);
+        border-bottom: 1px solid var(--border);
+        font-size: 0.75rem;
+        color: var(--fg-subtle);
+        font-family: var(--font-mono);
+      }
+
+      pre {
+        margin: 0;
+        padding: 1.25rem;
+        overflow-x: auto;
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        line-height: 1.7;
+        color: var(--fg-muted);
+      }
+
+      pre .cmd { color: var(--fg); }
+      pre .comment { color: var(--fg-subtle); }
+
+      /* Footer */
+      footer {
+        border-top: 1px solid var(--border);
+        background: linear-gradient(180deg, transparent, rgba(110, 159, 255, 0.04));
+        padding: 2.5rem 0;
+        text-align: center;
+        color: var(--fg-subtle);
+        font-size: 0.8125rem;
+      }
+
+      footer a {
+        color: var(--fg-muted);
+      }
+
+      @media (max-width: 640px) {
+        nav a:not(.btn) {
+          display: none;
+        }
+      }
+
+      /* FAQ */
+      .faq-list {
+        max-width: 720px;
+        margin: 0 auto;
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .faq-item {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+      }
+
+      .faq-item h3 {
+        margin: 0 0 0.5rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+
+      .faq-item p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--fg-muted);
+        line-height: 1.55;
+      }
+
+      .download-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+      }
+
+      .os-downloads {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+
+      .os-btn {
+        min-width: 200px;
+        padding: 0.75rem 1.25rem;
+        text-align: left;
+      }
+
+      .os-btn img,
+      .os-btn svg {
+        width: 1.25rem;
+        height: 1.25rem;
+        flex-shrink: 0;
+      }
+
+      .os-btn .os-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.3;
+      }
+
+      .os-btn .os-label {
+        font-weight: 600;
+      }
+
+      .os-btn .os-sub {
+        font-size: 0.75rem;
+        font-weight: 400;
+        opacity: 0.7;
+      }
+
+      .install-guide {
+        max-width: 680px;
+        margin: 1.5rem auto 0;
+        text-align: left;
+      }
+
+      .guide {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        overflow: hidden;
+      }
+
+      .guide summary {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.9rem 1.25rem;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        list-style: none;
+      }
+
+      .guide summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .guide summary:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .guide summary::after {
+        content: "+";
+        margin-left: auto;
+        color: var(--fg-subtle);
+        font-size: 1.15rem;
+        line-height: 1;
+        transition: transform 0.2s ease;
+      }
+
+      .guide[open] summary::after {
+        transform: rotate(45deg);
+      }
+
+      .guide-body {
+        padding: 0.25rem 1.25rem 1.25rem;
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .guide-os h4 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 0 0.5rem;
+        font-size: 0.875rem;
+      }
+
+      .guide-os h4 img,
+      .guide-os h4 svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .guide-os ol {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: var(--fg-muted);
+        font-size: 0.875rem;
+        display: grid;
+        gap: 0.375rem;
+      }
+
+      .guide-os strong {
+        color: var(--fg);
+      }
+
+      .guide-os code {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        background: var(--elevated);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.3rem;
+        color: var(--fg);
+      }
+
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://gitforge.github.io/gitforge/#organization",
+            "name": "GitForge",
+            "url": "https://gitforge.github.io/gitforge/",
+            "logo": "https://gitforge.github.io/gitforge/icon.png",
+            "sameAs": [
+              "https://github.com/gitforge/gitforge",
+              "https://github.com/gitforge"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://gitforge.github.io/gitforge/#website",
+            "url": "https://gitforge.github.io/gitforge/",
+            "name": "GitForge",
+            "description": "Free open-source desktop Git client with commit graph and real local Git operations.",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://gitforge.github.io/gitforge/#organization" }
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://gitforge.github.io/gitforge/#webpage",
+            "url": "https://gitforge.github.io/gitforge/",
+            "name": "GitForge — Free open-source desktop Git client with commit graph",
+            "description": "Free desktop Git client for macOS, Windows, and Linux with commit graph, branch sidebar, working tree, and real local Git operations.",
+            "isPartOf": { "@id": "https://gitforge.github.io/gitforge/#website" },
+            "about": { "@id": "https://gitforge.github.io/gitforge/#software" },
+            "inLanguage": "en"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://gitforge.github.io/gitforge/#software",
+            "name": "GitForge",
+            "alternateName": "gitforge",
+            "url": "https://gitforge.github.io/gitforge/",
+            "applicationCategory": "DeveloperApplication",
+            "applicationSubCategory": "Version Control",
+            "operatingSystem": "macOS, Windows, Linux",
+            "softwareVersion": "1.0.2",
+            "description": "Desktop Git client with a commit graph, branch sidebar, working tree, interactive rebase, and real local Git operations via the native Git CLI.",
+            "downloadUrl": "https://github.com/gitforge/gitforge/releases",
+            "screenshot": "https://gitforge.github.io/gitforge/screenshot.png",
+            "image": "https://gitforge.github.io/gitforge/icon.png",
+            "license": "https://opensource.org/licenses/MIT",
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "author": {
+              "@type": "Person",
+              "name": "gitforge",
+              "url": "https://github.com/gitforge"
+            },
+            "publisher": { "@id": "https://gitforge.github.io/gitforge/#organization" },
+            "mainEntityOfPage": { "@id": "https://gitforge.github.io/gitforge/#webpage" },
+            "codeRepository": "https://github.com/gitforge/gitforge",
+            "programmingLanguage": ["TypeScript", "JavaScript"],
+            "featureList": [
+              "Commit graph with virtualized SVG lanes",
+              "Clone from URL, init new repos, and folder discovery",
+              "Multi-repository tabs with reopen-closed and keyboard navigation",
+              "Branch sidebar with merge and rebase drag-and-drop",
+              "Working tree with per-hunk staging",
+              "Text diffs plus image previews with zoom and lightbox",
+              "Git output log with executed commands",
+              "Customizable keyboard shortcuts",
+              "Auto-fetch on a configurable interval",
+              "Blame overlay with file history",
+              "Interactive rebase",
+              "Fetch, pull, push, and sync",
+              "System terminal at the repo root (⌘T)",
+              "Basic and Advanced UI modes",
+              "Multiple themes"
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://gitforge.github.io/gitforge/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is GitForge?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "GitForge is a free, open-source desktop Git client for macOS, Windows, and Linux. It provides a three-pane view with a commit graph, branch sidebar, and working tree, running real Git commands against local repositories."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is GitForge free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. GitForge is open source under the MIT license and free to download and use."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What platforms does GitForge support?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "GitForge ships macOS .app.zip bundles (Apple silicon and Intel) from GitHub Releases. Developers can also build from source on macOS with Node.js, npm, and Go."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does GitForge require an account or subscription?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. GitForge works entirely with local repositories and does not require sign-in, cloud sync, or a paid subscription."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How is GitForge different from GitKraken or Sourcetree?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "GitForge is a lightweight, open-source alternative focused on a fast commit graph and real Git CLI operations without accounts or vendor lock-in. It is MIT-licensed and runs Git in the pure Go backend via typed gateway commands."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <header>
+      <div class="wrap header-inner">
+        <a class="logo" href="#">
+          <img class="logo-mark" src="icon.png" alt="GitForge app icon" width="28" height="28" />
+          GitForge
+        </a>
+        <nav>
+          <a href="#features">Compare</a>
+          <a href="#install">Download</a>
+          <a href="#faq">FAQ</a>
+          <a
+            class="btn btn-ghost"
+            href="https://github.com/gitforge/gitforge"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.997.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.525.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.292-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.385 0-6.627-5.373-12-12-12.703"/>
+            </svg>
+            GitHub
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <div class="badge">
+            <span class="badge-dot"></span>
+            v1.0.2 · Open source · Wails desktop app
+          </div>
+          <h1>GitForge — a lighter way to <span>see your Git history</span></h1>
+          <p>
+            Free, open-source desktop Git client for macOS, Windows, and Linux. Browse commit history on a
+            fast graph, manage branches, stage changes, and run real Git commands
+            against local repositories — no account required.
+          </p>
+          <div class="hero-actions">
+            <a
+              class="btn btn-primary"
+              href="#install"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2.25a.75.75 0 0 1 .75.75v11.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 1 1 1.06-1.06l3.22 3.22V3a.75.75 0 0 1 .75-.75zm-9 13.5a.75.75 0 0 1 .75.75v2.25a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5V16.5a.75.75 0 0 1 1.5 0v2.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V16.5a.75.75 0 0 1 .75-.75z"/>
+              </svg>
+              Download
+            </a>
+            <a
+              class="btn btn-ghost"
+              href="https://github.com/gitforge/gitforge"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.997.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.525.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.292-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.385 0-6.627-5.373-12-12-12.703"/>
+              </svg>
+              View on GitHub
+            </a>
+            <a class="btn btn-ghost" href="#install">Get started</a>
+          </div>
+
+          <figure class="screenshot-frame">
+            <div class="screenshot-titleBar">
+              <div class="traffic">
+                <span class="red"></span>
+                <span class="yellow"></span>
+                <span class="green"></span>
+              </div>
+              <span class="screenshot-title">GitForge — AwesomeShop</span>
+            </div>
+            <img
+              src="screenshot.png"
+              alt="GitForge showing the AwesomeShop repository with repo tabs, commit graph, branch sidebar, working tree, and resizable three-pane layout"
+              class="screenshot"
+              width="1440"
+              height="900"
+              loading="eager"
+            />
+          </figure>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="wrap">
+          <span class="eyebrow">Why GitForge?</span>
+          <h2>Same workflow, without the baggage</h2>
+          <p class="section-sub">Core Git features at parity — free, open-source, and lightweight.</p>
+          <div class="compare-scroll">
+            <table class="compare-table">
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">GitForge</th>
+                  <th scope="col">GitKraken</th>
+                  <th scope="col">GitHub Desktop</th>
+                  <th scope="col">Sourcetree</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Free + open-source (MIT)</th>
+                  <td class="yes">✅</td>
+                  <td>❌</td>
+                  <td>✅*</td>
+                  <td>✅ free, ❌ closed</td>
+                </tr>
+                <tr>
+                  <th scope="row">No account required</th>
+                  <td class="yes">✅</td>
+                  <td>❌</td>
+                  <td>✅</td>
+                  <td>❌</td>
+                </tr>
+                <tr>
+                  <th scope="row">Commit graph + branches + staging</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>✅</td>
+                  <td>✅</td>
+                </tr>
+                <tr>
+                  <th scope="row">Merge / rebase / cherry-pick</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>partial</td>
+                  <td>✅</td>
+                </tr>
+                <tr>
+                  <th scope="row">Hunk staging + conflict editor</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>partial</td>
+                  <td>✅</td>
+                </tr>
+                <tr>
+                  <th scope="row">Interactive rebase</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>✅</td>
+                </tr>
+                <tr>
+                  <th scope="row">Undo / redo + stash</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>partial</td>
+                  <td>partial</td>
+                </tr>
+                <tr>
+                  <th scope="row">Image diffs + blame + file history</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>partial</td>
+                  <td>partial</td>
+                </tr>
+                <tr>
+                  <th scope="row">Multi-repo tabs</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>✅</td>
+                </tr>
+                <tr>
+                  <th scope="row">Command palette + custom shortcuts</th>
+                  <td class="yes">✅</td>
+                  <td>partial</td>
+                  <td>❌</td>
+                  <td>❌</td>
+                </tr>
+                <tr>
+                  <th scope="row">macOS / Windows / Linux</th>
+                  <td class="yes">✅</td>
+                  <td>✅</td>
+                  <td>✅ / ✅ / ❌**</td>
+                  <td>✅ / ✅ / ❌</td>
+                </tr>
+                <tr>
+                  <th scope="row">Lightweight, offline-first</th>
+                  <td class="yes">✅</td>
+                  <td>❌ heavy</td>
+                  <td>✅</td>
+                  <td>❌ heavy</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="compare-note">* GitHub Desktop is open-source but GitHub-centric. ** No official Linux build.</p>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <span class="eyebrow">Under the hood</span>
+          <h2>Built with modern tools</h2>
+          <p class="section-sub">Wails 3 (Go) desktop shell, Vue 3 renderer, and a typed Git command layer.</p>
+          <div class="stack-carousel">
+            <div class="stack-track">
+              <div class="stack-group">
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/go" alt="Go logo" width="16" height="16" loading="lazy" />Go</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/wails" alt="Wails logo" width="16" height="16" loading="lazy" />Wails 3</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/vuedotjs" alt="Vue.js logo" width="16" height="16" loading="lazy" />Vue 3</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/typescript" alt="TypeScript logo" width="16" height="16" loading="lazy" />TypeScript</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/pinia" alt="Pinia logo" width="16" height="16" loading="lazy" />Pinia</span>
+                <span class="stack-tag"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" /><circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none" /><path d="M13.5 9H18M13.5 13.5H18M13.5 18H16M6 15.5h3M6 18h2" /></svg>reka-ui</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/tailwindcss" alt="Tailwind CSS logo" width="16" height="16" loading="lazy" />Tailwind CSS 4</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/vitest" alt="Vitest logo" width="16" height="16" loading="lazy" />Vitest</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/vite" alt="Vite logo" width="16" height="16" loading="lazy" />Vite</span>
+              </div>
+              <div class="stack-group" aria-hidden="true">
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/go" alt="" width="16" height="16" loading="lazy" />Go</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/wails" alt="" width="16" height="16" loading="lazy" />Wails 3</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/vuedotjs" alt="" width="16" height="16" loading="lazy" />Vue 3</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/typescript" alt="" width="16" height="16" loading="lazy" />TypeScript</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/pinia" alt="" width="16" height="16" loading="lazy" />Pinia</span>
+                <span class="stack-tag"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" /><circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none" /><path d="M13.5 9H18M13.5 13.5H18M13.5 18H16M6 15.5h3M6 18h2" /></svg>reka-ui</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/tailwindcss" alt="" width="16" height="16" loading="lazy" />Tailwind CSS 4</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/vitest" alt="" width="16" height="16" loading="lazy" />Vitest</span>
+                <span class="stack-tag"><img src="https://cdn.simpleicons.org/vite" alt="" width="16" height="16" loading="lazy" />Vite</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install">
+        <div class="wrap">
+          <div class="download-panel">
+          <span class="eyebrow">Get the app</span>
+          <h2>Download GitForge</h2>
+          <p class="section-sub">Free desktop app for macOS, Windows, and Linux — open source, no account required.</p>
+          <div class="quick-install">
+            <div class="quick-install-code">
+              <code id="quick-install-cmd"><span class="command">curl -fsSL</span> https://raw.githubusercontent.com/gitforge/gitforge/main/scripts/install.sh <span class="command">| sh</span></code>
+              <button id="quick-install-copy" class="btn btn-primary" type="button" aria-label="Copy install command">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                Copy
+              </button>
+            </div>
+            <small class="quick-install-note">Easy install with one command — no Gatekeeper prompts.</small>
+          </div>
+          <div class="os-downloads">
+            <a
+              id="dl-mac"
+              class="btn btn-ghost os-btn"
+              href="https://github.com/gitforge/gitforge/releases/latest"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img src="https://cdn.simpleicons.org/apple/white" alt="" width="20" height="20" loading="lazy" />
+              <span class="os-text">
+                <span class="os-label">Download for macOS</span>
+                <span class="os-sub">.app.zip · Apple Silicon + Intel</span>
+              </span>
+            </a>
+            <a
+              id="dl-win"
+              class="btn btn-ghost os-btn"
+              href="https://github.com/gitforge/gitforge/releases/latest"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM12 4.2 21 3v8.5h-9zM3 12.5h7.5v7.1L3 18.5zM12 12.5h9V21l-9-1.2z" /></svg>
+              <span class="os-text">
+                <span class="os-label">Download for Windows</span>
+                <span class="os-sub">.exe installer</span>
+              </span>
+            </a>
+            <a
+              id="dl-linux"
+              class="btn btn-ghost os-btn"
+              href="https://github.com/gitforge/gitforge/releases/latest"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img src="https://cdn.simpleicons.org/linux/white" alt="" width="20" height="20" loading="lazy" />
+              <span class="os-text">
+                <span class="os-label">Download for Linux</span>
+                <span class="os-sub">.AppImage · .deb</span>
+              </span>
+            </a>
+          </div>
+          <div class="install-guide">
+            <details class="guide" name="install-guide">
+              <summary>Installation guide</summary>
+              <div class="guide-body">
+                <div class="guide-os">
+                  <h4>
+                    <img src="https://cdn.simpleicons.org/apple/white" alt="" width="16" height="16" loading="lazy" />
+                    macOS
+                  </h4>
+                  <ol>
+                    <li><strong>Recommended:</strong> run the one-line command above in Terminal — installs to Applications with no Gatekeeper prompts. Re-run it to update.</li>
+                    <li>Or download the <strong>.app.zip</strong> above, unzip it and drag <strong>GitForge</strong> into <strong>Applications</strong>.</li>
+                    <li>Launch the app — then use <strong>GitForge → Check for Updates…</strong> anytime to stay current.</li>
+                  </ol>
+                  <details>
+                    <summary>macOS says "move it to the Trash" or refuses to open?</summary>
+                    <div class="guide-body">
+                      <p>
+                        Browsers attach a quarantine flag to downloaded files, which macOS blocks for
+                        apps without an Apple Developer ID. Nothing is wrong with your download:
+                      </p>
+                      <p>
+                        <strong>Easiest fix:</strong> run the one-line install command instead — its
+                        downloads skip the quarantine flag entirely. If you already installed from the
+                        <code>.app.zip</code>, run once in Terminal:
+                      </p>
+                      <pre>
+                          <code>codesign --force --deep --sign - "/Applications/GitForge.app" xattr -dr com.apple.quarantine "/Applications/GitForge.app"</code>
+                      </pre>
+                    </div>
+                  </details>
+                </div>
+                <div class="guide-os">
+                  <h4>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM12 4.2 21 3v8.5h-9zM3 12.5h7.5v7.1L3 18.5zM12 12.5h9V21l-9-1.2z" /></svg>
+                    Windows
+                  </h4>
+                  <ol>
+                    <li>Download the <strong>.exe installer</strong> above.</li>
+                    <li>Run it and follow the setup wizard.</li>
+                    <li>Launch from the Start menu — then use <strong>GitForge → Check for Updates…</strong> anytime to stay current.</li>
+                  </ol>
+                </div>
+                <div class="guide-os">
+                  <h4>
+                    <img src="https://cdn.simpleicons.org/linux/white" alt="" width="16" height="16" loading="lazy" />
+                    Linux
+                  </h4>
+                  <ol>
+                    <li>Download the <strong>.AppImage</strong> or <strong>.deb</strong> above.</li>
+                    <li>AppImage: make it executable with <code>chmod +x *.AppImage</code> and run it. Deb: install with <code>sudo apt install ./gitforge_*.deb</code>.</li>
+                    <li>Launch the app — then use <strong>GitForge → Check for Updates…</strong> anytime to stay current.</li>
+                  </ol>
+                </div>
+              </div>
+            </details>
+            <details class="guide" name="install-guide">
+              <summary>All releases</summary>
+              <div class="guide-body">
+                <p>Past versions, checksums and platform-specific installers (.dmg, .exe, .msi, .AppImage, .deb, .rpm) live on the <a href="https://github.com/gitforge/gitforge/releases" target="_blank" rel="noopener noreferrer"><strong>GitHub Releases page</strong></a>.</p>
+              </div>
+            </details>
+          <details class="guide" name="install-guide">
+            <summary>Build from source</summary>
+            <div class="guide-body">
+              <pre>
+                  <span class="comment"># Clone and run</span>
+                  <span class="cmd">git clone</span> https://github.com/gitforge/gitforge.git
+                  <span class="cmd">cd</span> gitforge
+                  <span class="cmd">npm install</span>
+                  <span class="cmd">npm run dev</span>
+              </pre>
+            </div>
+          </details>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="wrap">
+          <span class="eyebrow">FAQ</span>
+          <h2>Frequently asked questions</h2>
+          <p class="section-sub">Quick answers about GitForge.</p>
+          <div class="faq-list">
+            <article class="faq-item">
+              <h3>What is GitForge?</h3>
+              <p>
+                GitForge is a free, open-source desktop Git client for macOS, Windows, and Linux. It shows a
+                commit graph, branch sidebar, and working tree in a resizable three-pane
+                layout, running real <code style="font-family: var(--font-mono); font-size: 0.8125rem;">git</code>
+                commands against your local repositories.
+              </p>
+            </article>
+            <article class="faq-item">
+              <h3>Is GitForge free?</h3>
+              <p>
+                Yes. GitForge is MIT-licensed and free to download and use.
+              </p>
+            </article>
+            <article class="faq-item">
+              <h3>What platforms does GitForge support?</h3>
+              <p>
+                Packaged builds are available for macOS (.dmg), Windows (.exe), and Linux (.AppImage, .deb) on
+                <a href="https://github.com/gitforge/gitforge/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>.
+                Developers can build and run it locally on macOS with Node.js, npm, and Go.
+              </p>
+            </article>
+            <article class="faq-item">
+              <h3>Does GitForge require an account?</h3>
+              <p>
+                No sign-in, cloud sync, or subscription. Open a local folder, clone from a URL,
+                or start a new repo — then work with your Git repositories offline.
+              </p>
+            </article>
+            <article class="faq-item">
+              <h3>How is GitForge different from GitKraken or Sourcetree?</h3>
+              <p>
+                GitForge is a lightweight, open-source alternative focused on a fast commit
+                graph and direct Git CLI operations — without vendor accounts or lock-in.
+                Built with Wails 3 (Go), Vue 3, and TypeScript.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <p>
+          <a href="https://github.com/gitforge/gitforge">GitForge</a>
+          v1.0.2
+          · MIT License · Built by
+          <a href="https://github.com/gitforge">gitforge</a>
+          · <a href="llms.txt">llms.txt</a>
+          · <a href="llms-full.txt">llms-full.txt</a>
+        </p>
+      </div>
+    </footer>
+    <script>
+      (function () {
+        function pick(assets, patterns) {
+          for (let i = 0; i < patterns.length; i++) {
+            for (let j = 0; j < assets.length; j++) {
+              if (patterns[i].test(assets[j].name)) {
+                  return assets[j];
+              }
+            }
+          }
+
+          return null;
+        }
+
+        function wire(id, asset) {
+          if (!asset) return;
+            const el = document.getElementById(id);
+
+            if (el) {
+                el.href = asset.browser_download_url;
+            }
+        }
+        fetch('https://api.github.com/repos/gitforge/gitforge/releases/latest')
+          .then(function (res) {
+            if (!res.ok) {
+                throw new Error('release lookup failed');
+            }
+
+            return res.json();
+          })
+          .then(function (release) {
+              const assets = release.assets || [];
+              wire('dl-mac', pick(assets, [/\.dmg$/i, /\.tar\.gz$/i]));
+              wire('dl-win', pick(assets, [/-setup\.exe$/i, /\.exe$/i, /\.msi$/i]));
+              wire('dl-linux', pick(assets, [/\.AppImage$/i, /\.deb$/i, /\.rpm$/i]));
+          })
+          .catch(function () {
+            /* Fallback hrefs (releases/latest) remain in place. */
+          });
+
+        /* Copy quick-install command */
+          const copyBtn = document.getElementById('quick-install-copy');
+
+          if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+              const cmd = document.getElementById('quick-install-cmd');
+
+                if (cmd) {
+                    const done = function () {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(function () {
+                            copyBtn.textContent = 'Copy';
+                        }, 2000);
+                    };
+
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(cmd.textContent.trim()).then(done, function () {
+                        });
+                    } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = cmd.textContent.trim();
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        done();
+                    }
+                } else {
+                    return;
+                }
+            });
+        }
+
+        /* Scroll reveal */
+          const revealEls = document.querySelectorAll(
+              '.compare-scroll, .faq-item, .screenshot-frame, .download-panel, .stack-carousel, .install-box'
+          );
+
+          if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(
+                function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                },
+                {threshold: 0.1}
+            );
+            revealEls.forEach(function (el) {
+            el.classList.add('reveal');
+            observer.observe(el);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
