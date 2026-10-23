@@ -218,6 +218,12 @@ jobs:
       VERSION: ${{ needs.version.outputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
+      # gh needs a git repository: it resolves the repo from the remote and
+      # --verify-tag looks the tag up locally (full fetch includes all tags)
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v7
         with:
           path: assets
