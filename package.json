@@ -1,6 +1,6 @@
 {
   "name": "gitforge",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Free, open-source desktop Git client (Go + Wails 3, Vue 3, TypeScript) \u2014 graph-first alternative to GitKraken with commit graph, branches, staging and real local Git operations.",
   "author": "GitForge <justinh_12@protonmail.com>",
   "license": "MIT",

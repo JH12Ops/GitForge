@@ -2,7 +2,7 @@
 
 > GitForge is a free, MIT-licensed desktop Git client for macOS, Windows, and Linux with a graph-first interface — commit graph, branch sidebar, working tree, multi-repo tabs, and real local Git operations via the native Git CLI. No account or subscription is required.
 
-Version: 1.0.2 · License: MIT · Author: gitforge · Stack: Wails 3 (Go), Vue 3, TypeScript, Pinia, Tailwind CSS 4
+Version: 1.0.4 · License: MIT · Author: gitforge · Stack: Wails 3 (Go), Vue 3, TypeScript, Pinia, Tailwind CSS 4
 
 Website: https://jh12ops.github.io/GitForge/
 Repository: https://github.com/JH12Ops/GitForge

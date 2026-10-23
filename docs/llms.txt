@@ -2,7 +2,7 @@
 
 > GitForge is a free, MIT-licensed desktop Git client for macOS with a graph-first interface — commit graph, branch sidebar, working tree, multi-repo tabs, and real local Git operations via the native Git CLI. No account or subscription required.
 
-GitForge is a desktop application built with Vue 3, TypeScript, and a pure Go backend on Wails 3. It runs `git` in the Go backend and exposes a typed HTTP JSON gateway (+ SSE events) to the renderer. Current version: 1.0.2.
+GitForge is a desktop application built with Vue 3, TypeScript, and a pure Go backend on Wails 3. It runs `git` in the Go backend and exposes a typed HTTP JSON gateway (+ SSE events) to the renderer. Current version: 1.0.4.
 
 Use this file as a curated index. For complete landing-page content in one fetch, see [llms-full.txt](https://jh12ops.github.io/GitForge/llms-full.txt).
 
