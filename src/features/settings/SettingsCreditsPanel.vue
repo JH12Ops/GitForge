@@ -7,6 +7,7 @@ import { APP_LINKS, THIRD_PARTY_CREDITS, type AppLinkId } from '@shared/app/cred
 import { openExternalUrl } from '@/lib/shell/appBridge'
 import {
   APP_AUTHOR_URL,
+  APP_BUILD_LABEL,
   APP_DESCRIPTION,
   APP_LICENSE,
   APP_MAKER,
@@ -29,7 +30,9 @@ function openLink(url: string): void {
   <div class="px-3">
     <div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-panel-raised)] px-4 py-4">
       <p class="text-[15px] font-semibold text-[var(--color-fg)]">{{ APP_NAME }}</p>
-      <p class="mt-0.5 text-[12px] text-[var(--color-fg-muted)]">Version {{ APP_VERSION }}</p>
+      <p class="mt-0.5 text-[12px] text-[var(--color-fg-muted)]">
+        {{ APP_BUILD_LABEL || `Version ${APP_VERSION}` }}
+      </p>
       <p class="mt-3 text-[12px] leading-relaxed text-[var(--color-fg-muted)]">
         {{ APP_DESCRIPTION }}
       </p>
