@@ -735,8 +735,11 @@ export const lifecycleActions = {
         if (scopes.includes('status')) this.workingTree = data.workingTree
       }
       scheduleDiffReload(this.workingTree, scopes)
-    } catch {
-      /* no repo open */
+    } catch (err) {
+      // Dropped snapshot data + a silent swallow would leave the graph frozen
+      // on stale refs (this exact symptom hides mid-pull refreshes), so the
+      // failure stays visible in the console even when it is recoverable.
+      console.error('[gitforge] snapshot refresh failed:', err)
     }
   },
 

@@ -2,11 +2,12 @@ export type GraphEdgeKind = 'straight' | 'merge' | 'laneChange' | 'converge'
 
 /**
  * Builds an SVG path for a graph edge between two row centers.
- * GitKraken-style single rounded corner (matches prefetch canvas `arcTo`):
- * - merge: horizontal off the merge commit, then a rounded corner down
- *   into the merge-parent lane (corner near the source row).
+ * - merge: horizontal off the merge commit, then a rounded corner into the
+ *   merge-parent lane — read from below, the parent lane rises and curves
+ *   over at the merge row (the mirror of the branch-fork bend).
  * - converge / laneChange: vertical down the source lane, then a rounded
- *   corner into the target lane (corner near the target row).
+ *   corner near the target row into the target lane.
+ * Edges sharing a lane stay a plain straight vertical.
  */
 export function graphEdgePath(
   x1: number,

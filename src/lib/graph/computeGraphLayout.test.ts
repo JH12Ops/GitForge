@@ -79,7 +79,10 @@ describe('computeGraphLayout', () => {
     const mergeBand = layout.bands[0]
     const mergeFork = mergeBand.find((edge) => edge.fromLane !== edge.toLane)
     expect(mergeFork?.kind).toBe('merge')
-    expect(mergeBand.some((edge) => edge.fromLane === 1 && edge.toLane === 1)).toBe(true)
+    // No straight duplicate on the merge-parent lane in the fan-out band: with
+    // the swept elbow rendering it poked out as a second vertical line next to
+    // the curve (the fork the curve used to visually swallow).
+    expect(mergeBand.some((edge) => edge.fromLane === 1 && edge.toLane === 1)).toBe(false)
   })
 
   it('frees a lane after a branch converges on the main line', () => {

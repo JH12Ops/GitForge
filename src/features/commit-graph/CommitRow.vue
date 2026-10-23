@@ -188,12 +188,8 @@ const rowTint = computed((): Record<string, string> | null => {
   return { backgroundColor: props.graphNode.color }
 })
 
-const showPreviewConnector = computed(
-  () => props.graphNode != null && (previewBranch.value != null || isCreatingBranchHere.value),
-)
-
 const previewConnectorStyle = computed((): Record<string, string> | null => {
-  if (!showPreviewConnector.value || !props.graphNode) return null
+  if (!isCreatingBranchHere.value || !props.graphNode) return null
   const toNode =
     REFS_RIGHT_PADDING +
     refGraphGap.value +
@@ -210,14 +206,6 @@ const previewConnectorStyle = computed((): Record<string, string> | null => {
   return {
     backgroundColor: props.graphNode.color,
     width: `${width}px`,
-  }
-})
-
-const previewConnectorOverlayStyle = computed((): Record<string, string> | null => {
-  if (!previewConnectorStyle.value) return null
-  return {
-    ...previewConnectorStyle.value,
-    width: `calc(100% + ${previewConnectorStyle.value.width})`,
   }
 })
 
@@ -397,13 +385,7 @@ function openOnGithub(): void {
                 muted
               />
             </div>
-            <div class="relative h-[2px] min-w-0 flex-1">
-              <div
-                v-if="previewConnectorOverlayStyle"
-                class="pointer-events-none absolute top-1/2 left-0 z-10 h-[2px] -translate-y-1/2 opacity-25"
-                :style="previewConnectorOverlayStyle"
-              />
-            </div>
+            <div class="min-w-0 flex-1" />
           </div>
           <template v-if="hasBranchRef && primaryRef && !isCreatingBranchHere">
             <div
