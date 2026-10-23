@@ -30,14 +30,14 @@ jobs:
             os: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go-backend/go.mod
           cache-dependency-path: go-backend/go.sum
@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload macOS bundle
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: GitForge-${{ matrix.label }}.app.zip
           path: GitForge-${{ matrix.label }}.app.zip
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload Windows exe
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: GitForge-${{ matrix.label }}.zip
           path: GitForge-${{ matrix.label }}.zip
@@ -124,7 +124,7 @@ jobs:
 
       - name: Upload Linux binary
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: GitForge-${{ matrix.label }}.tar.gz
           path: GitForge-${{ matrix.label }}.tar.gz
